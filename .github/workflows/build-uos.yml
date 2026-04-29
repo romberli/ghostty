@@ -157,7 +157,8 @@ jobs:
             --libdir=lib \
             --default-library=static \
             -Denable-wayland=true \
-            -Denable-x11=false
+            -Denable-x11=false \
+            -Denable-docs=false
           ninja -C build -j$(nproc)
           ninja -C build install
 
