@@ -70,6 +70,7 @@ jobs:
             autoconf automake libtool \
             patchelf \
             libexpat1-dev \
+            libxml2-dev \
             xsltproc
           pip3 install --upgrade pip setuptools wheel
           pip3 install meson ninja
