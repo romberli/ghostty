@@ -1,0 +1,366 @@
+name: Build for UOS20 (Debian 10)
+
+on:
+  push:
+    branches:
+      - '**'
+  workflow_dispatch:
+    inputs:
+      optimize_level:
+        description: 'Optimization level'
+        required: false
+        default: '2'
+        type: choice
+        options:
+          - '0'
+          - '1'
+          - '2'
+          - '3'
+
+env:
+  DEPS_PREFIX: /opt/deps
+  ZIG_PREFIX: /opt/zig
+  PKG_CONFIG_PATH: /opt/deps/lib/pkgconfig:/usr/lib/pkgconfig
+  LD_LIBRARY_PATH: /opt/deps/lib:/usr/lib
+
+jobs:
+  build-uos:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:10
+      options: --user root
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      TZ: UTC
+      PREFIX: /opt/deps
+      ZIG_VERSION: 0.13.0
+      OPTIMIZE_LEVEL: ${{ github.event.inputs.optimize_level || '2' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache dependencies
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            /opt/zig
+            /opt/deps
+          key: uos-deps-v1-${{ hashFiles('build.zig.zon.json') }}
+          restore-keys: |
+            uos-deps-v1-
+
+      - name: Install build tools
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          apt-get update
+          apt-get install -y \
+            build-essential \
+            python3 python3-pip \
+            git curl wget \
+            pkg-config \
+            autoconf automake libtool \
+            patchelf \
+            libexpat1-dev \
+            xsltproc
+          pip3 install meson ninja
+
+      - name: Install Zig
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          curl -L https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz \
+            | tar -xJ -C /opt
+          mv /opt/zig-linux-x86_64-${ZIG_VERSION} /opt/zig
+          ln -sf /opt/zig/zig /usr/local/bin/zig
+          zig version
+
+      - name: Build zlib
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://zlib.net/zlib-1.3.1.tar.gz
+          tar xf zlib-1.3.1.tar.gz
+          cd zlib-1.3.1
+          ./configure --prefix=${PREFIX}
+          make -j$(nproc)
+          make install
+
+      - name: Build libffi
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://github.com/libffi/libffi/releases/download/v3.4.6/libffi-3.4.6.tar.gz
+          tar xf libffi-3.4.6.tar.gz
+          cd libffi-3.4.6
+          ./configure --prefix=${PREFIX} --enable-static --disable-shared
+          make -j$(nproc)
+          make install
+
+      - name: Build glib
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://download.gnome.org/sources/glib/2.78/glib-2.78.4.tar.xz
+          tar xf glib-2.78.4.tar.xz
+          cd glib-2.78.4
+          meson setup build \
+            --prefix=${PREFIX} \
+            --libdir=lib \
+            --default-library=static \
+            -Dlibffi=enabled \
+            -Dzlib=enabled \
+            -Dtests=false \
+            -Ddocumentation=false \
+            -Dintrospection=disabled
+          ninja -C build -j$(nproc)
+          ninja -C build install
+
+      - name: Build wayland
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://gitlab.freedesktop.org/wayland/wayland/-/archive/1.22.0/wayland-1.22.0.tar.gz
+          tar xf wayland-1.22.0.tar.gz
+          cd wayland-1.22.0
+          meson setup build \
+            --prefix=${PREFIX} \
+            --libdir=lib \
+            --default-library=static \
+            -Ddocumentation=false \
+            -Dtests=false
+          ninja -C build -j$(nproc)
+          ninja -C build install
+
+      - name: Build wayland-protocols
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://gitlab.freedesktop.org/wayland/wayland-protocols/-/archive/1.36/wayland-protocols-1.36.tar.gz
+          tar xf wayland-protocols-1.36.tar.gz
+          cd wayland-protocols-1.36
+          meson setup build \
+            --prefix=${PREFIX} \
+            -Dtests=false
+          ninja -C build
+          ninja -C build install
+
+      - name: Build libxkbcommon
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://xkbcommon.org/download/libxkbcommon-1.6.0.tar.xz
+          tar xf libxkbcommon-1.6.0.tar.xz
+          cd libxkbcommon-1.6.0
+          meson setup build \
+            --prefix=${PREFIX} \
+            --libdir=lib \
+            --default-library=static \
+            -Denable-wayland=true \
+            -Denable-x11=false \
+            -Ddefault_library=static \
+            -Dtests=false \
+            -Ddocs=false
+          ninja -C build -j$(nproc)
+          ninja -C build install
+
+      - name: Build cairo
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://cairographics.org/releases/cairo-1.18.0.tar.xz
+          tar xf cairo-1.18.0.tar.xz
+          cd cairo-1.18.0
+          meson setup build \
+            --prefix=${PREFIX} \
+            --libdir=lib \
+            --default-library=static \
+            -Dtests=false \
+            -Dspectre=disabled \
+            -Dquartz=disabled \
+            -Dwin32=disabled \
+            -Dpng=enabled \
+            -Dxcb=disabled \
+            -Dxlib=disabled \
+            -Dgl-backend=disabled \
+            -Dtee=disabled \
+            -Dfontconfig=disabled \
+            -Dfreetype=disabled \
+            -Ddwrite=disabled
+          ninja -C build -j$(nproc)
+          ninja -C build install
+
+      - name: Build pango
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://download.gnome.org/sources/pango/1.52/pango-1.52.2.tar.xz
+          tar xf pango-1.52.2.tar.xz
+          cd pango-1.52.2
+          meson setup build \
+            --prefix=${PREFIX} \
+            --libdir=lib \
+            --default-library=static \
+            -Dintrospection=disabled \
+            -Ddocumentation=false \
+            -Dtests=false \
+            -Dbuild-examples=false \
+            -Dfontconfig=disabled \
+            -Dfreetype=disabled
+          ninja -C build -j$(nproc)
+          ninja -C build install
+
+      - name: Build libepoxy
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://github.com/nicehash/libepoxy/archive/refs/tags/v1.5.10.tar.gz -O libepoxy-1.5.10.tar.gz
+          tar xf libepoxy-1.5.10.tar.gz
+          cd libepoxy-1.5.10
+          meson setup build \
+            --prefix=${PREFIX} \
+            --libdir=lib \
+            --default-library=static \
+            -Dtests=false \
+            -Degl=yes \
+            -Dglx=no \
+            -Dx11=false
+          ninja -C build -j$(nproc)
+          ninja -C build install
+
+      - name: Build graphene
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://github.com/nicehash/graphene/archive/refs/tags/1.10.8.tar.gz -O graphene-1.10.8.tar.gz
+          tar xf graphene-1.10.8.tar.gz
+          cd graphene-1.10.8
+          meson setup build \
+            --prefix=${PREFIX} \
+            --libdir=lib \
+            --default-library=static \
+            -Dtests=false \
+            -Dintrospection=disabled \
+            -Dgobject_types=true
+          ninja -C build -j$(nproc)
+          ninja -C build install
+
+      - name: Build GTK4
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://download.gnome.org/sources/gtk/4.14/gtk-4.14.4.tar.xz
+          tar xf gtk-4.14.4.tar.xz
+          cd gtk-4.14.4
+          meson setup build \
+            --prefix=${PREFIX} \
+            --libdir=lib \
+            --default-library=static \
+            -Dintrospection=disabled \
+            -Ddocumentation=false \
+            -Dtests=false \
+            -Dexamples=false \
+            -Dbuild-tests=false \
+            -Dmedia-ffmpeg=disabled \
+            -Dmedia-gstreamer=disabled \
+            -Dprint=disabled \
+            -Dvulkan=disabled \
+            -Dx11-backend=false \
+            -Dwayland-backend=true \
+            -Dbroadway-backend=false \
+            -Dmacos-backend=false \
+            -Dwin32-backend=false \
+            -Dbuild-demos=false \
+            -Dbuild-tests=false \
+            -Dbackend-wayland-x11=wayland \
+            -Dtools=true \
+            -Dwayland-protocols-dir=${PREFIX}/share/wayland-protocols
+          ninja -C build -j$(nproc)
+          ninja -C build install
+
+      - name: Build gtk4-layer-shell
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://github.com/nicehash/gtk4-layer-shell/archive/refs/tags/v1.0.3.tar.gz -O gtk4-layer-shell-1.0.3.tar.gz
+          tar xf gtk4-layer-shell-1.0.3.tar.gz
+          cd gtk4-layer-shell-1.0.3
+          meson setup build \
+            --prefix=${PREFIX} \
+            --libdir=lib \
+            --default-library=static \
+            -Dtests=false \
+            -Dexamples=false \
+            -Ddocs=false
+          ninja -C build -j$(nproc)
+          ninja -C build install
+
+      - name: Build Ghostty
+        run: |
+          export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:/usr/lib/pkgconfig"
+          export LD_LIBRARY_PATH="${PREFIX}/lib:/usr/lib"
+          export PATH="${ZIG_PREFIX}:${PATH}"
+          
+          zig build \
+            -Doptimize=ReleaseSafe \
+            -Dtarget=x86_64-linux-gnu.2.28 \
+            -Dcpu=x86_64_v2 \
+            --search-prefix ${PREFIX} \
+            --search-prefix /usr \
+            -Dgtk=true \
+            -Dwayland=true \
+            -Dbackend=gtk
+          
+          ls -la zig-out/bin/
+
+      - name: Collect required libraries
+        run: |
+          mkdir -p dist/ghostty-uos-amd64/lib
+          
+          # Find all dynamic libraries needed by ghostty from our deps
+          ldd zig-out/bin/ghostty 2>/dev/null | \
+            grep -E "=> ${PREFIX}" | \
+            awk '{print $3}' | \
+            while read lib; do
+              cp -L "$lib" dist/ghostty-uos-amd64/lib/ 2>/dev/null || true
+            done
+          
+          # Copy the binary
+          cp zig-out/bin/ghostty dist/ghostty-uos-amd64/
+          
+          # List collected libraries
+          ls -la dist/ghostty-uos-amd64/lib/
+
+      - name: Set RPATH for portable execution
+        run: |
+          patchelf --set-rpath '$ORIGIN/lib' dist/ghostty-uos-amd64/ghostty
+          
+          # Verify RPATH is set
+          patchelf --print-rpath dist/ghostty-uos-amd64/ghostty
+          
+          # Verify dependencies resolve correctly
+          cd dist/ghostty-uos-amd64
+          LD_LIBRARY_PATH=./lib ldd ghostty
+
+      - name: Create distribution package
+        run: |
+          cd dist
+          tar czf ghostty-uos-amd64.tar.gz ghostty-uos-amd64
+          
+          # Show package contents
+          tar tzf ghostty-uos-amd64.tar.gz
+          
+          # Show package size
+          ls -lh ghostty-uos-amd64.tar.gz
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ghostty-uos-amd64
+          path: dist/ghostty-uos-amd64.tar.gz
+          retention-days: 90
+
+      - name: Build summary
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Successfully built Ghostty for UOS20 (Debian 10)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Package size:** $(ls -lh dist/ghostty-uos-amd64.tar.gz | awk '{print $5}')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Dependencies bundled:** $(ls dist/ghostty-uos-amd64/lib/ | wc -l) libraries" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Usage:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download \`ghostty-uos-amd64.tar.gz\`" >> $GITHUB_STEP_SUMMARY
+          echo "2. Extract to any directory" >> $GITHUB_STEP_SUMMARY
+          echo "3. Run \`ghostty\` directly (no installation needed)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** Only requires glibc 2.28+ on target system" >> $GITHUB_STEP_SUMMARY
