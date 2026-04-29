@@ -106,6 +106,7 @@ jobs:
       - name: Build glib
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
+          export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
           wget -q https://download.gnome.org/sources/glib/2.78/glib-2.78.4.tar.xz
           tar xf glib-2.78.4.tar.xz
           cd glib-2.78.4
@@ -113,8 +114,6 @@ jobs:
             --prefix=${PREFIX} \
             --libdir=lib \
             --default-library=static \
-            -Dlibffi=enabled \
-            -Dzlib=enabled \
             -Dtests=false \
             -Ddocumentation=false \
             -Dintrospection=disabled
