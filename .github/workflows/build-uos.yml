@@ -71,6 +71,7 @@ jobs:
             patchelf \
             libexpat1-dev \
             libxml2-dev \
+            bison \
             xsltproc
           pip3 install --upgrade pip setuptools wheel
           pip3 install meson ninja
