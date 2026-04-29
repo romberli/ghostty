@@ -129,7 +129,8 @@ jobs:
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
-            --default-library=static
+            --default-library=static \
+            -Ddocumentation=false
           ninja -C build -j$(nproc)
           ninja -C build install
 
