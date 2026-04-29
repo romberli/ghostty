@@ -115,8 +115,9 @@ jobs:
             --libdir=lib \
             --default-library=static \
             -Dtests=false \
-            -Ddocumentation=false \
-            -Dintrospection=disabled
+            -Dgtk_doc=false \
+            -Dintrospection=disabled \
+            -Dman=false
           ninja -C build -j$(nproc)
           ninja -C build install
 
