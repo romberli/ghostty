@@ -114,25 +114,21 @@ jobs:
             --prefix=${PREFIX} \
             --libdir=lib \
             --default-library=static \
-            -Dtests=false \
-            -Dgtk_doc=false \
-            -Dintrospection=disabled \
-            -Dman=false
+            -Dtests=false
           ninja -C build -j$(nproc)
           ninja -C build install
 
       - name: Build wayland
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
+          export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
           wget -q https://gitlab.freedesktop.org/wayland/wayland/-/archive/1.22.0/wayland-1.22.0.tar.gz
           tar xf wayland-1.22.0.tar.gz
           cd wayland-1.22.0
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
-            --default-library=static \
-            -Ddocumentation=false \
-            -Dtests=false
+            --default-library=static
           ninja -C build -j$(nproc)
           ninja -C build install
 
@@ -142,15 +138,14 @@ jobs:
           wget -q https://gitlab.freedesktop.org/wayland/wayland-protocols/-/archive/1.36/wayland-protocols-1.36.tar.gz
           tar xf wayland-protocols-1.36.tar.gz
           cd wayland-protocols-1.36
-          meson setup build \
-            --prefix=${PREFIX} \
-            -Dtests=false
+          meson setup build --prefix=${PREFIX}
           ninja -C build
           ninja -C build install
 
       - name: Build libxkbcommon
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
+          export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
           wget -q https://xkbcommon.org/download/libxkbcommon-1.6.0.tar.xz
           tar xf libxkbcommon-1.6.0.tar.xz
           cd libxkbcommon-1.6.0
@@ -159,54 +154,35 @@ jobs:
             --libdir=lib \
             --default-library=static \
             -Denable-wayland=true \
-            -Denable-x11=false \
-            -Ddefault_library=static \
-            -Dtests=false \
-            -Ddocs=false
+            -Denable-x11=false
           ninja -C build -j$(nproc)
           ninja -C build install
 
       - name: Build cairo
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
+          export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
           wget -q https://cairographics.org/releases/cairo-1.18.0.tar.xz
           tar xf cairo-1.18.0.tar.xz
           cd cairo-1.18.0
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
-            --default-library=static \
-            -Dtests=false \
-            -Dspectre=disabled \
-            -Dquartz=disabled \
-            -Dwin32=disabled \
-            -Dpng=enabled \
-            -Dxcb=disabled \
-            -Dxlib=disabled \
-            -Dgl-backend=disabled \
-            -Dtee=disabled \
-            -Dfontconfig=disabled \
-            -Dfreetype=disabled \
-            -Ddwrite=disabled
+            --default-library=static
           ninja -C build -j$(nproc)
           ninja -C build install
 
       - name: Build pango
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
+          export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
           wget -q https://download.gnome.org/sources/pango/1.52/pango-1.52.2.tar.xz
           tar xf pango-1.52.2.tar.xz
           cd pango-1.52.2
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
-            --default-library=static \
-            -Dintrospection=disabled \
-            -Ddocumentation=false \
-            -Dtests=false \
-            -Dbuild-examples=false \
-            -Dfontconfig=disabled \
-            -Dfreetype=disabled
+            --default-library=static
           ninja -C build -j$(nproc)
           ninja -C build install
 
@@ -219,33 +195,28 @@ jobs:
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
-            --default-library=static \
-            -Dtests=false \
-            -Degl=yes \
-            -Dglx=no \
-            -Dx11=false
+            --default-library=static
           ninja -C build -j$(nproc)
           ninja -C build install
 
       - name: Build graphene
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
+          export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
           wget -q https://github.com/nicehash/graphene/archive/refs/tags/1.10.8.tar.gz -O graphene-1.10.8.tar.gz
           tar xf graphene-1.10.8.tar.gz
           cd graphene-1.10.8
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
-            --default-library=static \
-            -Dtests=false \
-            -Dintrospection=disabled \
-            -Dgobject_types=true
+            --default-library=static
           ninja -C build -j$(nproc)
           ninja -C build install
 
       - name: Build GTK4
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
+          export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
           wget -q https://download.gnome.org/sources/gtk/4.14/gtk-4.14.4.tar.xz
           tar xf gtk-4.14.4.tar.xz
           cd gtk-4.14.4
@@ -253,24 +224,10 @@ jobs:
             --prefix=${PREFIX} \
             --libdir=lib \
             --default-library=static \
-            -Dintrospection=disabled \
-            -Ddocumentation=false \
-            -Dtests=false \
-            -Dexamples=false \
-            -Dbuild-tests=false \
-            -Dmedia-ffmpeg=disabled \
-            -Dmedia-gstreamer=disabled \
-            -Dprint=disabled \
-            -Dvulkan=disabled \
-            -Dx11-backend=false \
             -Dwayland-backend=true \
-            -Dbroadway-backend=false \
-            -Dmacos-backend=false \
-            -Dwin32-backend=false \
+            -Dx11-backend=false \
             -Dbuild-demos=false \
             -Dbuild-tests=false \
-            -Dbackend-wayland-x11=wayland \
-            -Dtools=true \
             -Dwayland-protocols-dir=${PREFIX}/share/wayland-protocols
           ninja -C build -j$(nproc)
           ninja -C build install
@@ -278,16 +235,14 @@ jobs:
       - name: Build gtk4-layer-shell
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
+          export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
           wget -q https://github.com/nicehash/gtk4-layer-shell/archive/refs/tags/v1.0.3.tar.gz -O gtk4-layer-shell-1.0.3.tar.gz
           tar xf gtk4-layer-shell-1.0.3.tar.gz
           cd gtk4-layer-shell-1.0.3
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
-            --default-library=static \
-            -Dtests=false \
-            -Dexamples=false \
-            -Ddocs=false
+            --default-library=static
           ninja -C build -j$(nproc)
           ninja -C build install
 
