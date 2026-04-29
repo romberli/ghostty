@@ -71,6 +71,7 @@ jobs:
             patchelf \
             libexpat1-dev \
             xsltproc
+          pip3 install --upgrade pip setuptools wheel
           pip3 install meson ninja
 
       - name: Install Zig
