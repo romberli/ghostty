@@ -193,7 +193,7 @@ jobs:
       - name: Build libepoxy
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
-          wget -q https://github.com/nicehash/libepoxy/archive/refs/tags/v1.5.10.tar.gz -O libepoxy-1.5.10.tar.gz
+          wget -q https://github.com/anholt/libepoxy/archive/refs/tags/v1.5.10.tar.gz -O libepoxy-1.5.10.tar.gz
           tar xf libepoxy-1.5.10.tar.gz
           cd libepoxy-1.5.10
           meson setup build \
