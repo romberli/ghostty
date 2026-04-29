@@ -193,8 +193,8 @@ jobs:
       - name: Build libepoxy
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
-          wget -q https://github.com/anholt/libepoxy/archive/refs/tags/v1.5.10.tar.gz -O libepoxy-1.5.10.tar.gz
-          tar xf libepoxy-1.5.10.tar.gz
+          curl -L https://github.com/anholt/libepoxy/releases/download/v1.5.10/libepoxy-1.5.10.tar.xz -o libepoxy-1.5.10.tar.xz
+          tar xf libepoxy-1.5.10.tar.xz
           cd libepoxy-1.5.10
           meson setup build \
             --prefix=${PREFIX} \
@@ -207,8 +207,8 @@ jobs:
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
-          wget -q https://github.com/nicehash/graphene/archive/refs/tags/1.10.8.tar.gz -O graphene-1.10.8.tar.gz
-          tar xf graphene-1.10.8.tar.gz
+          curl -L https://github.com/nicehash/graphene/releases/download/1.10.8/graphene-1.10.8.tar.xz -o graphene-1.10.8.tar.xz
+          tar xf graphene-1.10.8.tar.xz
           cd graphene-1.10.8
           meson setup build \
             --prefix=${PREFIX} \
@@ -240,8 +240,8 @@ jobs:
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
-          wget -q https://github.com/nicehash/gtk4-layer-shell/archive/refs/tags/v1.0.3.tar.gz -O gtk4-layer-shell-1.0.3.tar.gz
-          tar xf gtk4-layer-shell-1.0.3.tar.gz
+          curl -L https://github.com/nicehash/gtk4-layer-shell/releases/download/v1.0.3/gtk4-layer-shell-1.0.3.tar.xz -o gtk4-layer-shell-1.0.3.tar.xz
+          tar xf gtk4-layer-shell-1.0.3.tar.xz
           cd gtk4-layer-shell-1.0.3
           meson setup build \
             --prefix=${PREFIX} \
