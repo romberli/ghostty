@@ -212,7 +212,7 @@ jobs:
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
-          git clone --depth 1 --branch 1.10.8 https://github.com/nicehash/graphene.git graphene-1.10.8
+          git clone --depth 1 --branch 1.10.8 https://github.com/ebassi/graphene.git graphene-1.10.8
           cd graphene-1.10.8
           meson setup build \
             --prefix=${PREFIX} \
