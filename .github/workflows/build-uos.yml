@@ -237,7 +237,8 @@ jobs:
             -Dx11-backend=false \
             -Dbuild-demos=false \
             -Dbuild-tests=false \
-            -Dintrospection=disabled
+            -Dintrospection=disabled \
+            -Dvulkan=disabled
           ninja -C build -j$(nproc)
           ninja -C build install
 
