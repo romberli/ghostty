@@ -71,6 +71,7 @@ jobs:
             patchelf \
             libexpat1-dev \
             libxml2-dev \
+            libx11-dev \
             bison \
             gperf \
             xsltproc
