@@ -232,10 +232,12 @@ jobs:
             --prefix=${PREFIX} \
             --libdir=lib \
             --default-library=static \
+            --force-fallback-for=glib \
             -Dwayland-backend=true \
             -Dx11-backend=false \
             -Dbuild-demos=false \
-            -Dbuild-tests=false
+            -Dbuild-tests=false \
+            -Dintrospection=disabled
           ninja -C build -j$(nproc)
           ninja -C build install
 
