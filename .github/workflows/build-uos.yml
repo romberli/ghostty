@@ -194,7 +194,7 @@ jobs:
       - name: Build libepoxy
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
-          git clone --depth 1 --branch v1.5.10 https://github.com/anholt/libepoxy.git libepoxy-1.5.10
+          git clone --depth 1 --branch 1.5.10 https://github.com/anholt/libepoxy.git libepoxy-1.5.10
           cd libepoxy-1.5.10
           meson setup build \
             --prefix=${PREFIX} \
