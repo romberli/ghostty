@@ -72,6 +72,9 @@ jobs:
             libexpat1-dev \
             libxml2-dev \
             libx11-dev \
+            libegl1-mesa-dev \
+            libgl1-mesa-dev \
+            libgles2-mesa-dev \
             bison \
             gperf \
             xsltproc
