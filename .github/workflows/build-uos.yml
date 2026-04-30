@@ -235,8 +235,7 @@ jobs:
             -Dwayland-backend=true \
             -Dx11-backend=false \
             -Dbuild-demos=false \
-            -Dbuild-tests=false \
-            -Dwayland-protocols-dir=${PREFIX}/share/wayland-protocols
+            -Dbuild-tests=false
           ninja -C build -j$(nproc)
           ninja -C build install
 
