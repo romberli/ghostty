@@ -33,7 +33,7 @@ jobs:
       DEBIAN_FRONTEND: noninteractive
       TZ: UTC
       PREFIX: /opt/deps
-      ZIG_VERSION: 0.13.0
+      ZIG_VERSION: 0.15.2
       OPTIMIZE_LEVEL: ${{ github.event.inputs.optimize_level || '2' }}
 
     steps:
