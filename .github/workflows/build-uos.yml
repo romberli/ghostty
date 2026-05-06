@@ -228,10 +228,12 @@ jobs:
           wget -q https://download.gnome.org/sources/gtk/4.14/gtk-4.14.4.tar.xz
           tar xf gtk-4.14.4.tar.xz
           cd gtk-4.14.4
+          rm -f subprojects/glib.wrap
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
             --default-library=static \
+            --wrap-mode=nofallback \
             -Dwayland-backend=true \
             -Dx11-backend=false \
             -Dbuild-demos=false \
