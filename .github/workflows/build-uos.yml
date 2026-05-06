@@ -197,7 +197,12 @@ jobs:
         run: |
           export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
           export PATH="${PREFIX}/bin:${PATH}"
-          wget https://cairographics.org/releases/cairo-1.18.0.tar.xz
+          
+          # Try multiple sources for cairo
+          wget --timeout=30 --tries=3 https://cairographics.org/releases/cairo-1.18.0.tar.xz || \
+          wget --timeout=30 --tries=3 https://github.com/AcademySoftwareFoundation/OpenColorIO/releases/download/cairo-1.18.0/cairo-1.18.0.tar.xz || \
+          curl -L --retry 3 https://cairographics.org/releases/cairo-1.18.0.tar.xz -o cairo-1.18.0.tar.xz
+          
           tar xf cairo-1.18.0.tar.xz
           cd cairo-1.18.0
           meson setup build \
