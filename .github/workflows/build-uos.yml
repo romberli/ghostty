@@ -54,9 +54,9 @@ jobs:
           path: |
             /opt/zig
             /opt/deps
-          key: uos-deps-v1-${{ hashFiles('build.zig.zon.json') }}
+          key: uos-deps-v2-${{ hashFiles('build.zig.zon.json') }}-${{ github.run_number }}
           restore-keys: |
-            uos-deps-v1-
+            uos-deps-v2-
 
       - name: Install build tools
         if: steps.cache-deps.outputs.cache-hit != 'true'
