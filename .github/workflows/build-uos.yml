@@ -192,18 +192,19 @@ jobs:
           ninja -C build -j$(nproc)
           ninja -C build install
 
-      - name: Build cairo
+- name: Build cairo
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
           export PATH="${PREFIX}/bin:${PATH}"
-          wget -q https://cairographics.org/releases/cairo-1.18.0.tar.xz
+          wget https://cairographics.org/releases/cairo-1.18.0.tar.xz
           tar xf cairo-1.18.0.tar.xz
           cd cairo-1.18.0
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
-            --default-library=static
+            --default-library=static \
+            -Dtests=false
           ninja -C build -j$(nproc)
           ninja -C build install
 
