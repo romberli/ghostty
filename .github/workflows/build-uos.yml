@@ -106,7 +106,7 @@ jobs:
           wget -q https://github.com/libffi/libffi/releases/download/v3.4.6/libffi-3.4.6.tar.gz
           tar xf libffi-3.4.6.tar.gz
           cd libffi-3.4.6
-          ./configure --prefix=${PREFIX} --enable-static --disable-shared
+          ./configure --prefix=${PREFIX} CFLAGS="-fPIC" --enable-static --disable-shared
           make -j$(nproc)
           make install
 
