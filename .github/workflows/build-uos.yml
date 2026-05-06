@@ -238,7 +238,8 @@ jobs:
             -Dbuild-demos=false \
             -Dbuild-tests=false \
             -Dintrospection=disabled \
-            -Dvulkan=disabled
+            -Dvulkan=disabled \
+            -Dmedia=disabled
           ninja -C build -j$(nproc)
           ninja -C build install
 
