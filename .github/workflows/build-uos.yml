@@ -203,8 +203,7 @@ jobs:
             --prefix=${PREFIX} \
             --libdir=lib \
             --default-library=static \
-            -Dtests=disabled \
-            -Ddemos=disabled
+            -Dtests=disabled
           ninja -C build -j$(nproc)
           ninja -C build install
 
