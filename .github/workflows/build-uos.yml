@@ -199,6 +199,7 @@ jobs:
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+          export PATH="${PREFIX}/bin:${PATH}"
           wget -q https://download.gnome.org/sources/gdk-pixbuf/2.42/gdk-pixbuf-2.42.10.tar.xz
           tar xf gdk-pixbuf-2.42.10.tar.xz
           cd gdk-pixbuf-2.42.10
