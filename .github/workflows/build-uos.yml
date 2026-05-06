@@ -114,13 +114,13 @@ jobs:
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+          export PATH="${PREFIX}/bin:${PATH}"
           wget -q https://download.gnome.org/sources/glib/2.78/glib-2.78.4.tar.xz
           tar xf glib-2.78.4.tar.xz
           cd glib-2.78.4
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
-            --default-library=static \
             -Dtests=false
           ninja -C build -j$(nproc)
           ninja -C build install
@@ -129,13 +129,13 @@ jobs:
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+          export PATH="${PREFIX}/bin:${PATH}"
           wget -q https://gitlab.freedesktop.org/wayland/wayland/-/archive/1.22.0/wayland-1.22.0.tar.gz
           tar xf wayland-1.22.0.tar.gz
           cd wayland-1.22.0
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
-            --default-library=static \
             -Ddocumentation=false
           ninja -C build -j$(nproc)
           ninja -C build install
@@ -154,13 +154,13 @@ jobs:
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+          export PATH="${PREFIX}/bin:${PATH}"
           wget -q https://xkbcommon.org/download/libxkbcommon-1.6.0.tar.xz
           tar xf libxkbcommon-1.6.0.tar.xz
           cd libxkbcommon-1.6.0
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
-            --default-library=static \
             -Denable-wayland=true \
             -Denable-x11=false \
             -Denable-docs=false
@@ -171,13 +171,13 @@ jobs:
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+          export PATH="${PREFIX}/bin:${PATH}"
           wget -q https://cairographics.org/releases/cairo-1.18.0.tar.xz
           tar xf cairo-1.18.0.tar.xz
           cd cairo-1.18.0
           meson setup build \
             --prefix=${PREFIX} \
-            --libdir=lib \
-            --default-library=static
+            --libdir=lib
           ninja -C build -j$(nproc)
           ninja -C build install
 
@@ -185,13 +185,13 @@ jobs:
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+          export PATH="${PREFIX}/bin:${PATH}"
           wget -q https://download.gnome.org/sources/pango/1.52/pango-1.52.2.tar.xz
           tar xf pango-1.52.2.tar.xz
           cd pango-1.52.2
           meson setup build \
             --prefix=${PREFIX} \
-            --libdir=lib \
-            --default-library=static
+            --libdir=lib
           ninja -C build -j$(nproc)
           ninja -C build install
 
@@ -200,13 +200,13 @@ jobs:
         run: |
           export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
           export PATH="${PREFIX}/bin:${PATH}"
+          export LD_LIBRARY_PATH="${PREFIX}/lib:/usr/lib"
           wget -q https://download.gnome.org/sources/gdk-pixbuf/2.42/gdk-pixbuf-2.42.10.tar.xz
           tar xf gdk-pixbuf-2.42.10.tar.xz
           cd gdk-pixbuf-2.42.10
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
-            --default-library=static \
             -Dintrospection=disabled \
             -Dinstalled_tests=false \
             -Dgio_sniffing=false
@@ -216,12 +216,13 @@ jobs:
       - name: Build libepoxy
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
+          export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+          export PATH="${PREFIX}/bin:${PATH}"
           git clone --depth 1 --branch 1.5.10 https://github.com/anholt/libepoxy.git libepoxy-1.5.10
           cd libepoxy-1.5.10
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
-            --default-library=static \
             -Dtests=false
           ninja -C build -j$(nproc)
           ninja -C build install
@@ -230,12 +231,12 @@ jobs:
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+          export PATH="${PREFIX}/bin:${PATH}"
           git clone --depth 1 --branch 1.10.8 https://github.com/ebassi/graphene.git graphene-1.10.8
           cd graphene-1.10.8
           meson setup build \
             --prefix=${PREFIX} \
-            --libdir=lib \
-            --default-library=static
+            --libdir=lib
           ninja -C build -j$(nproc)
           ninja -C build install
 
@@ -243,6 +244,8 @@ jobs:
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+          export PATH="${PREFIX}/bin:${PATH}"
+          export LD_LIBRARY_PATH="${PREFIX}/lib:/usr/lib"
           wget -q https://download.gnome.org/sources/gtk/4.14/gtk-4.14.4.tar.xz
           tar xf gtk-4.14.4.tar.xz
           cd gtk-4.14.4
@@ -250,7 +253,6 @@ jobs:
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
-            --default-library=static \
             --wrap-mode=nofallback \
             -Dwayland-backend=true \
             -Dx11-backend=false \
@@ -267,20 +269,21 @@ jobs:
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+          export PATH="${PREFIX}/bin:${PATH}"
+          export LD_LIBRARY_PATH="${PREFIX}/lib:/usr/lib"
           git clone --depth 1 --branch v1.0.3 https://github.com/nicehash/gtk4-layer-shell.git gtk4-layer-shell-1.0.3
           cd gtk4-layer-shell-1.0.3
           meson setup build \
             --prefix=${PREFIX} \
-            --libdir=lib \
-            --default-library=static
+            --libdir=lib
           ninja -C build -j$(nproc)
           ninja -C build install
 
       - name: Build Ghostty
         run: |
-          export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:/usr/lib/pkgconfig"
+          export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
           export LD_LIBRARY_PATH="${PREFIX}/lib:/usr/lib"
-          export PATH="${ZIG_PREFIX}:${PATH}"
+          export PATH="${ZIG_PREFIX}:${PREFIX}/bin:${PATH}"
           
           zig build \
             -Doptimize=ReleaseSafe \
@@ -288,29 +291,49 @@ jobs:
             -Dcpu=x86_64_v2 \
             --search-prefix ${PREFIX} \
             --search-prefix /usr \
-            -Dgtk=true \
-            -Dwayland=true \
-            -Dbackend=gtk
+            -Dapp-runtime=gtk \
+            -Dgtk-x11=false \
+            -Dgtk-wayland=true
           
           ls -la zig-out/bin/
+          
+          echo "Checking binary dependencies:"
+          ldd zig-out/bin/ghostty || true
 
-      - name: Collect required libraries
+      - name: Collect and bundle required libraries
         run: |
           mkdir -p dist/ghostty-uos-amd64/lib
           
-          # Find all dynamic libraries needed by ghostty from our deps
-          ldd zig-out/bin/ghostty 2>/dev/null | \
-            grep -E "=> ${PREFIX}" | \
+          BINARY=zig-out/bin/ghostty
+          
+          echo "Collecting all required libraries..."
+          
+          # Collect libraries from our custom prefix
+          ldd "$BINARY" 2>/dev/null | \
+            grep -E "${PREFIX}" | \
             awk '{print $3}' | \
             while read lib; do
-              cp -L "$lib" dist/ghostty-uos-amd64/lib/ 2>/dev/null || true
+              [ -n "$lib" ] && cp -L "$lib" dist/ghostty-uos-amd64/lib/ 2>/dev/null || true
+            done
+          
+          # Also collect system libraries that might not be on target system
+          # Be conservative - only include libraries known to have version issues
+          ldd "$BINARY" 2>/dev/null | \
+            grep -E "libstdc\+\+|libgcc_s|libwayland|libxkbcommon" | \
+            awk '{print $3}' | \
+            while read lib; do
+              [ -n "$lib" ] && [ -f "$lib" ] && cp -L "$lib" dist/ghostty-uos-amd64/lib/ 2>/dev/null || true
             done
           
           # Copy the binary
-          cp zig-out/bin/ghostty dist/ghostty-uos-amd64/
+          cp "$BINARY" dist/ghostty-uos-amd64/
           
           # List collected libraries
+          echo "Collected libraries:"
           ls -la dist/ghostty-uos-amd64/lib/
+          
+          LIB_COUNT=$(ls dist/ghostty-uos-amd64/lib/ 2>/dev/null | wc -l)
+          echo "Total libraries bundled: $LIB_COUNT"
 
       - name: Set RPATH for portable execution
         run: |
