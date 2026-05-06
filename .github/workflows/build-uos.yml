@@ -227,11 +227,7 @@ jobs:
             --libdir=lib \
             --default-library=static \
             --wrap-mode=nofallback \
-            -Dtests=disabled \
-            -Dsamples=disabled \
-            -Dspectre=disabled \
-            -Dquartz=disabled \
-            -Dwin32=disabled
+            -Dtests=disabled
           ninja -C build -j$(nproc)
           ninja -C build install
 
