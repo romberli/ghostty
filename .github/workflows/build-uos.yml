@@ -103,10 +103,12 @@ jobs:
       - name: Build libpng
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
+          export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+          export PATH="${PREFIX}/bin:${PATH}"
           wget -q https://download.sourceforge.net/libpng/libpng-1.6.40.tar.gz
           tar xf libpng-1.6.40.tar.gz
           cd libpng-1.6.40
-          CPPFLAGS="-fPIC" ./configure --prefix=${PREFIX} --enable-static --disable-shared
+          CPPFLAGS="-fPIC -I${PREFIX}/include" LDFLAGS="-L${PREFIX}/lib" ./configure --prefix=${PREFIX} --enable-static --disable-shared --with-zlib-prefix=${PREFIX}
           make -j$(nproc)
           make install
 
