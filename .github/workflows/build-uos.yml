@@ -195,6 +195,23 @@ jobs:
           ninja -C build -j$(nproc)
           ninja -C build install
 
+      - name: Build gdk-pixbuf
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+          wget -q https://download.gnome.org/sources/gdk-pixbuf/2.42/gdk-pixbuf-2.42.10.tar.xz
+          tar xf gdk-pixbuf-2.42.10.tar.xz
+          cd gdk-pixbuf-2.42.10
+          meson setup build \
+            --prefix=${PREFIX} \
+            --libdir=lib \
+            --default-library=static \
+            -Dintrospection=disabled \
+            -Dinstalled_tests=false \
+            -Dgio_sniffing=false
+          ninja -C build -j$(nproc)
+          ninja -C build install
+
       - name: Build libepoxy
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
