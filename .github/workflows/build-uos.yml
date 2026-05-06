@@ -232,7 +232,6 @@ jobs:
             --prefix=${PREFIX} \
             --libdir=lib \
             --default-library=static \
-            --force-fallback-for=glib \
             -Dwayland-backend=true \
             -Dx11-backend=false \
             -Dbuild-demos=false \
