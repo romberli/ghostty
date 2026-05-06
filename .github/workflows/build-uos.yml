@@ -205,11 +205,18 @@ jobs:
           
           tar xf cairo-1.18.0.tar.xz
           cd cairo-1.18.0
+          # Remove pixman wrap file to prevent meson from downloading it
+          rm -f subprojects/*.wrap
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
             --default-library=static \
-            -Dtests=disabled
+            --wrap-mode=nofallback \
+            -Dtests=disabled \
+            -Dsamples=disabled \
+            -Dspectre=disabled \
+            -Dquartz=disabled \
+            -Dwin32=disabled
           ninja -C build -j$(nproc)
           ninja -C build install
 
