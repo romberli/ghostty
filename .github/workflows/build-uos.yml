@@ -237,6 +237,7 @@ jobs:
             -Dx11-backend=false \
             -Dbuild-demos=false \
             -Dbuild-tests=false \
+            -Dbuild-testsuite=false \
             -Dintrospection=disabled \
             -Dvulkan=disabled \
             -Dmedia-gstreamer=disabled
