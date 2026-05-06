@@ -192,6 +192,22 @@ jobs:
           ninja -C build -j$(nproc)
           ninja -C build install
 
+      - name: Build pixman
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+          wget --timeout=30 --tries=3 https://cairographics.org/releases/pixman-0.42.2.tar.gz
+          tar xf pixman-0.42.2.tar.gz
+          cd pixman-0.42.2
+          meson setup build \
+            --prefix=${PREFIX} \
+            --libdir=lib \
+            --default-library=static \
+            -Dtests=disabled \
+            -Ddemos=disabled
+          ninja -C build -j$(nproc)
+          ninja -C build install
+
       - name: Build cairo
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
