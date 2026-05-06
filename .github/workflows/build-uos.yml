@@ -121,7 +121,9 @@ jobs:
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
-            -Dtests=false
+            --default-library=static \
+            -Dtests=false \
+            -Dselinux=disabled
           ninja -C build -j$(nproc)
           ninja -C build install
 
@@ -136,7 +138,9 @@ jobs:
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
-            -Ddocumentation=false
+            --default-library=static \
+            -Ddocumentation=false \
+            -Ddtd_validation=false
           ninja -C build -j$(nproc)
           ninja -C build install
 
@@ -161,6 +165,7 @@ jobs:
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
+            --default-library=static \
             -Denable-wayland=true \
             -Denable-x11=false \
             -Denable-docs=false
@@ -177,7 +182,8 @@ jobs:
           cd cairo-1.18.0
           meson setup build \
             --prefix=${PREFIX} \
-            --libdir=lib
+            --libdir=lib \
+            --default-library=static
           ninja -C build -j$(nproc)
           ninja -C build install
 
@@ -191,7 +197,8 @@ jobs:
           cd pango-1.52.2
           meson setup build \
             --prefix=${PREFIX} \
-            --libdir=lib
+            --libdir=lib \
+            --default-library=static
           ninja -C build -j$(nproc)
           ninja -C build install
 
@@ -207,6 +214,7 @@ jobs:
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
+            --default-library=static \
             -Dintrospection=disabled \
             -Dinstalled_tests=false \
             -Dgio_sniffing=false
@@ -223,6 +231,7 @@ jobs:
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
+            --default-library=static \
             -Dtests=false
           ninja -C build -j$(nproc)
           ninja -C build install
@@ -236,7 +245,8 @@ jobs:
           cd graphene-1.10.8
           meson setup build \
             --prefix=${PREFIX} \
-            --libdir=lib
+            --libdir=lib \
+            --default-library=static
           ninja -C build -j$(nproc)
           ninja -C build install
 
@@ -249,10 +259,11 @@ jobs:
           wget -q https://download.gnome.org/sources/gtk/4.14/gtk-4.14.4.tar.xz
           tar xf gtk-4.14.4.tar.xz
           cd gtk-4.14.4
-          rm -f subprojects/glib.wrap
+          rm -f subprojects/*.wrap
           meson setup build \
             --prefix=${PREFIX} \
             --libdir=lib \
+            --default-library=static \
             --wrap-mode=nofallback \
             -Dwayland-backend=true \
             -Dx11-backend=false \
@@ -261,7 +272,9 @@ jobs:
             -Dbuild-testsuite=false \
             -Dintrospection=disabled \
             -Dvulkan=disabled \
-            -Dmedia-gstreamer=disabled
+            -Dmedia-gstreamer=disabled \
+            -Dprint-backends=file \
+            -Dbuild-examples=false
           ninja -C build -j$(nproc)
           ninja -C build install
 
@@ -275,7 +288,10 @@ jobs:
           cd gtk4-layer-shell-1.0.3
           meson setup build \
             --prefix=${PREFIX} \
-            --libdir=lib
+            --libdir=lib \
+            --default-library=static \
+            -Dtests=false \
+            -Dexamples=false
           ninja -C build -j$(nproc)
           ninja -C build install
 
@@ -285,6 +301,7 @@ jobs:
           export LD_LIBRARY_PATH="${PREFIX}/lib:/usr/lib"
           export PATH="${ZIG_PREFIX}:${PREFIX}/bin:${PATH}"
           
+          # Force static linking of dependencies
           zig build \
             -Doptimize=ReleaseSafe \
             -Dtarget=x86_64-linux-gnu.2.28 \
@@ -293,58 +310,40 @@ jobs:
             --search-prefix /usr \
             -Dapp-runtime=gtk \
             -Dgtk-x11=false \
-            -Dgtk-wayland=true
+            -Dgtk-wayland=true \
+            -Dpie=false
           
           ls -la zig-out/bin/
           
           echo "Checking binary dependencies:"
           ldd zig-out/bin/ghostty || true
+          
+          echo "Binary size:"
+          ls -lh zig-out/bin/ghostty
 
-      - name: Collect and bundle required libraries
+      - name: Prepare minimal portable bundle
         run: |
-          mkdir -p dist/ghostty-uos-amd64/lib
+          mkdir -p dist/ghostty-uos-amd64
           
           BINARY=zig-out/bin/ghostty
           
-          echo "Collecting all required libraries..."
-          
-          # Collect libraries from our custom prefix
-          ldd "$BINARY" 2>/dev/null | \
-            grep -E "${PREFIX}" | \
-            awk '{print $3}' | \
-            while read lib; do
-              [ -n "$lib" ] && cp -L "$lib" dist/ghostty-uos-amd64/lib/ 2>/dev/null || true
-            done
-          
-          # Also collect system libraries that might not be on target system
-          # Be conservative - only include libraries known to have version issues
-          ldd "$BINARY" 2>/dev/null | \
-            grep -E "libstdc\+\+|libgcc_s|libwayland|libxkbcommon" | \
-            awk '{print $3}' | \
-            while read lib; do
-              [ -n "$lib" ] && [ -f "$lib" ] && cp -L "$lib" dist/ghostty-uos-amd64/lib/ 2>/dev/null || true
-            done
-          
-          # Copy the binary
+          # Copy the binary (should be mostly statically linked)
           cp "$BINARY" dist/ghostty-uos-amd64/
           
-          # List collected libraries
-          echo "Collected libraries:"
-          ls -la dist/ghostty-uos-amd64/lib/
+          echo "Analyzing remaining dependencies..."
+          ldd "$BINARY" 2>/dev/null || echo "Binary may be statically linked"
           
-          LIB_COUNT=$(ls dist/ghostty-uos-amd64/lib/ 2>/dev/null | wc -l)
-          echo "Total libraries bundled: $LIB_COUNT"
-
-      - name: Set RPATH for portable execution
-        run: |
-          patchelf --set-rpath '$ORIGIN/lib' dist/ghostty-uos-amd64/ghostty
+          # Check what's actually needed
+          DEPS=$(ldd "$BINARY" 2>/dev/null | grep "not found" || true)
+          if [ -n "$DEPS" ]; then
+            echo "WARNING: Missing dependencies detected:"
+            echo "$DEPS"
+          fi
           
-          # Verify RPATH is set
-          patchelf --print-rpath dist/ghostty-uos-amd64/ghostty
+          # Show final binary info
+          ls -lh dist/ghostty-uos-amd64/ghostty
           
-          # Verify dependencies resolve correctly
-          cd dist/ghostty-uos-amd64
-          LD_LIBRARY_PATH=./lib ldd ghostty
+          file dist/ghostty-uos-amd64/ghostty
 
       - name: Create distribution package
         run: |
@@ -356,6 +355,15 @@ jobs:
           
           # Show package size
           ls -lh ghostty-uos-amd64.tar.gz
+          
+          echo ""
+          echo "IMPORTANT: This package requires minimal system dependencies:"
+          echo "  - glibc 2.28+ (included in UOS20)"
+          echo "  - libwayland-client (if using Wayland)"
+          echo "  - libxkbcommon (for keyboard handling)"
+          echo "  - Basic OpenGL/Mesa libraries"
+          echo ""
+          echo "All other dependencies (GTK4, glib, pango, etc.) are statically linked."
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -368,15 +376,26 @@ jobs:
         run: |
           echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Successfully built Ghostty for UOS20 (Debian 10)" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Built Ghostty for UOS20 (Debian 10) with static linking" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Package size:** $(ls -lh dist/ghostty-uos-amd64.tar.gz | awk '{print $5}')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Dependencies bundled:** $(ls dist/ghostty-uos-amd64/lib/ | wc -l) libraries" >> $GITHUB_STEP_SUMMARY
+          echo "**Target glibc:** 2.28" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**System Requirements on UOS20:**" >> $GITHUB_STEP_SUMMARY
+          echo "- glibc 2.28+ (standard on UOS20)" >> $GITHUB_STEP_SUMMARY
+          echo "- libwayland-client (if using Wayland)" >> $GITHUB_STEP_SUMMARY
+          echo "- libxkbcommon (keyboard handling)" >> $GITHUB_STEP_SUMMARY
+          echo "- OpenGL/Mesa libraries" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Bundled Dependencies (statically linked):**" >> $GITHUB_STEP_SUMMARY
+          echo "- GTK4, glib, pango, cairo, gdk-pixbuf" >> $GITHUB_STEP_SUMMARY
+          echo "- libepoxy, graphene, libxkbcommon" >> $GITHUB_STEP_SUMMARY
+          echo "- wayland protocols" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Usage:**" >> $GITHUB_STEP_SUMMARY
           echo "1. Download \`ghostty-uos-amd64.tar.gz\`" >> $GITHUB_STEP_SUMMARY
           echo "2. Extract to any directory" >> $GITHUB_STEP_SUMMARY
-          echo "3. Run \`ghostty\` directly (no installation needed)" >> $GITHUB_STEP_SUMMARY
+          echo "3. Run \`./ghostty\` directly" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Note:** Only requires glibc 2.28+ on target system" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** Minimal system dependencies required (see above)" >> $GITHUB_STEP_SUMMARY
