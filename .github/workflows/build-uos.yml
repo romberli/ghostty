@@ -152,7 +152,7 @@ jobs:
         run: |
           export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
           export PATH="${PREFIX}/bin:${PATH}"
-          wget -q https://gitlab.freedesktop.org/wayland/wayland/-/archive/1.22.0/wayland-1.22.0.tar.gz
+          wget https://gitlab.freedesktop.org/wayland/wayland/-/archive/1.22.0/wayland-1.22.0.tar.gz
           tar xf wayland-1.22.0.tar.gz
           cd wayland-1.22.0
           meson setup build \
