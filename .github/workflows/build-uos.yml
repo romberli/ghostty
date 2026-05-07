@@ -54,6 +54,8 @@ env:
   V_LIBXML2: "2.12.7"
   V_PCRE2: "10.43"
   V_FRIBIDI: "1.0.13"
+  V_LIBXMLB: "0.3.21"
+  V_APPSTREAM: "1.0.5"
   V_WAYLAND: "1.22.0"
   V_WAYLAND_PROTOCOLS: "1.36"
   V_XKBCOMMON: "1.6.0"
@@ -119,7 +121,9 @@ jobs:
             libtiff-dev \
             libegl1-mesa-dev \
             libgl1-mesa-dev \
-            libgles2-mesa-dev
+            libgles2-mesa-dev \
+            libcurl4-openssl-dev \
+            libyaml-dev
           rm -rf /var/lib/apt/lists/*
           # Sanity
           ldd --version | head -n1
@@ -652,6 +656,56 @@ jobs:
           ninja -C build -j"$(nproc)"
           ninja -C build install
           pkg-config --modversion gtk4
+
+      - name: Build libxmlb (needed by appstream; buster has too old)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          curl -fL "https://github.com/hughsie/libxmlb/archive/refs/tags/${V_LIBXMLB}.tar.gz" -o xmlb.tgz
+          tar xzf xmlb.tgz
+          cd libxmlb-${V_LIBXMLB}
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=both \
+            --wrap-mode=nofallback \
+            -Dintrospection=false \
+            -Dgtkdoc=false \
+            -Dtests=false \
+            -Dstemmer=false
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion xmlb
+
+      - name: Build appstream (needed by libadwaita 1.5+)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          curl -fL "https://github.com/ximion/appstream/archive/refs/tags/v${V_APPSTREAM}.tar.gz" -o appstream.tgz
+          tar xzf appstream.tgz
+          cd appstream-${V_APPSTREAM}
+          rm -f subprojects/*.wrap
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=both \
+            --wrap-mode=nofallback \
+            -Dapidocs=false \
+            -Dinstall-docs=false \
+            -Dstemming=false \
+            -Dsvg-support=false \
+            -Dgir=false \
+            -Dsystemd=false \
+            -Dapt-support=false \
+            -Dvapi=false \
+            -Dcompose=false
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion appstream
 
       - name: Build libadwaita
         if: steps.cache-deps.outputs.cache-hit != 'true'
