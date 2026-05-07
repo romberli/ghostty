@@ -53,6 +53,7 @@ env:
   V_LIBFFI: "3.4.6"
   V_LIBXML2: "2.12.7"
   V_PCRE2: "10.43"
+  V_FRIBIDI: "1.0.13"
   V_WAYLAND: "1.22.0"
   V_WAYLAND_PROTOCOLS: "1.36"
   V_XKBCOMMON: "1.6.0"
@@ -113,7 +114,6 @@ jobs:
             sed gawk \
             python3 \
             libexpat1-dev \
-            libfribidi-dev \
             libpng-dev \
             libjpeg-dev \
             libtiff-dev
@@ -488,6 +488,27 @@ jobs:
           ninja -C build install
           pkg-config --modversion cairo
           pkg-config --modversion cairo-ft
+
+      - name: Build fribidi (debian:10 has 1.0.5, pango needs >= 1.0.6)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          curl -fL "https://github.com/fribidi/fribidi/releases/download/v${V_FRIBIDI}/fribidi-${V_FRIBIDI}.tar.xz" -o fribidi.txz
+          tar xJf fribidi.txz
+          cd fribidi-${V_FRIBIDI}
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=both \
+            --wrap-mode=nofallback \
+            -Dtests=false \
+            -Ddocs=false \
+            -Dbin=false
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion fribidi
 
       - name: Build pango (no xft, fontconfig + freetype only)
         if: steps.cache-deps.outputs.cache-hit != 'true'
