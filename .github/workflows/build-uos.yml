@@ -10,15 +10,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: debian:11-slim
+      image: debian:12-slim
       options: --user root
     env:
       DEBIAN_FRONTEND: noninteractive
       TZ: UTC
       # Lock ghostty binary to glibc 2.28 (UOS20 baseline).
-      # Build host is debian:11 (glibc 2.31) but Zig provides multi-version
-      # glibc headers/stubs, so the resulting binary will only reference
-      # symbols present up through GLIBC_2.28.
+      # Build host is debian:12 (glibc 2.36) but Zig provides multi-version
+      # glibc headers/stubs, so the resulting ghostty binary will only
+      # reference symbols up through GLIBC_2.28. The bundled GTK4 .so files
+      # will inevitably reference some glibc 2.29-2.36 symbols; we report
+      # those after the build for triage.
       ZIG_TARGET: x86_64-linux-gnu.2.28
       MAX_GLIBC: "2.28"
 
@@ -276,7 +278,7 @@ jobs:
           {
             echo "## Build summary"
             echo
-            echo "- Build host: \`debian:11-slim\` (glibc 2.31)"
+            echo "- Build host: \`debian:12-slim\` (glibc 2.36)"
             echo "- Target: \`${ZIG_TARGET}\`, max glibc \`GLIBC_${MAX_GLIBC}\`"
             echo "- App runtime: GTK4 / Wayland"
             echo
