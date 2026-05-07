@@ -558,11 +558,10 @@ jobs:
             -Dgio_sniffing=false \
             -Dman=false \
             -Dgtk_doc=false \
-            -Dbuiltin_loaders=png \
+            -Dbuiltin_loaders=png,jpeg \
             -Dpng=enabled \
-            -Dtiff=disabled \
-            -Djpeg=disabled \
-            -Dothers=disabled
+            -Djpeg=enabled \
+            -Dtiff=disabled
           ninja -C build -j"$(nproc)"
           ninja -C build install
           pkg-config --modversion gdk-pixbuf-2.0
