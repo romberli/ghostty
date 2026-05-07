@@ -10,17 +10,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: debian:12-slim
+      image: debian:13-slim
       options: --user root
     env:
       DEBIAN_FRONTEND: noninteractive
       TZ: UTC
       # Lock ghostty binary to glibc 2.28 (UOS20 baseline).
-      # Build host is debian:12 (glibc 2.36) but Zig provides multi-version
+      # Build host is debian:13 (glibc 2.41) but Zig provides multi-version
       # glibc headers/stubs, so the resulting ghostty binary will only
       # reference symbols up through GLIBC_2.28. The bundled GTK4 .so files
-      # will inevitably reference some glibc 2.29-2.36 symbols; we report
-      # those after the build for triage.
+      # will inevitably reference some glibc 2.29-2.41 symbols; we report
+      # those after the build for triage. Trixie is required because:
+      #   - libadwaita 1.7 (ghostty needs >= 1.5)
+      #   - blueprint-compiler 0.16 (ghostty needs >= 0.16)
+      #   - libgtk4-layer-shell-dev is also available here as a system pkg
+      # Earlier suites (bookworm, bullseye) all fail at least one of the above.
       ZIG_TARGET: x86_64-linux-gnu.2.28
       MAX_GLIBC: "2.28"
 
@@ -42,6 +46,7 @@ jobs:
             xxd \
             libgtk-4-dev \
             libadwaita-1-dev \
+            libgtk4-layer-shell-dev \
             libwayland-dev \
             libwayland-bin \
             libxkbcommon-dev \
@@ -278,7 +283,7 @@ jobs:
           {
             echo "## Build summary"
             echo
-            echo "- Build host: \`debian:12-slim\` (glibc 2.36)"
+            echo "- Build host: \`debian:13-slim\` (glibc 2.41)"
             echo "- Target: \`${ZIG_TARGET}\`, max glibc \`GLIBC_${MAX_GLIBC}\`"
             echo "- App runtime: GTK4 / Wayland"
             echo
