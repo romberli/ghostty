@@ -112,7 +112,12 @@ jobs:
             bison flex \
             gperf \
             sed gawk \
-            python3
+            python3 \
+            libexpat1-dev \
+            libfribidi-dev \
+            libpng-dev \
+            libjpeg-dev \
+            libtiff-dev
           rm -rf /var/lib/apt/lists/*
           # Sanity
           ldd --version | head -n1
