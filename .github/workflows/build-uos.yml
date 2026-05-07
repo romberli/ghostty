@@ -1,102 +1,713 @@
 name: Build for UOS20 (glibc 2.28)
 
+# Strategy:
+#   Build inside debian:10 (glibc 2.28), exactly matching UOS20's runtime
+#   ABI. Debian 10's system packages predate GTK4 entirely and its glib
+#   (2.58) is below GTK4's 2.66 minimum, so we compile the GTK4 stack
+#   from source into /opt/deps. The ghostty binary itself uses Zig with
+#   -Dtarget=x86_64-linux-gnu.2.28 as a belt-and-braces guarantee that
+#   no symbol newer than GLIBC_2.28 is referenced.
+#
+#   Build phases:
+#     1. apt: minimal toolchain (gcc, make, pkg-config, autotools) + the
+#        system glib (2.58) which we use as a bootstrap *only* to compile
+#        the new glib/cairo/pango subprojects' helpers, then immediately
+#        replace with the locally-built newer ones via PKG_CONFIG_PATH.
+#     2. python-build-standalone: drop a self-contained Python 3.12 in
+#        /opt/python (debian:10's Python 3.7 is too old for current meson
+#        and blueprint-compiler 0.16). pip-install meson, ninja,
+#        blueprint-compiler from there.
+#     3. Zig 0.15.2 via setup-zig action.
+#     4. Source-compile dependency stack into /opt/deps:
+#        zlib -> libffi -> libxml2 -> gettext (libintl) -> wayland ->
+#        wayland-protocols -> libxkbcommon -> pixman -> freetype ->
+#        fontconfig (-Dxft=disabled) -> harfbuzz -> cairo (no x11/xft) ->
+#        pango (no xft) -> gdk-pixbuf -> libepoxy -> graphene -> gtk4
+#        (wayland only, no x11/vulkan/cups/colord) -> libadwaita -> 
+#        gtk4-layer-shell.
+#     5. zig build: links against the locally-built stack via
+#        --search-prefix /opt/deps; the resulting ghostty binary is
+#        capped at GLIBC_2.28 by Zig's target flag.
+#     6. Recursive ldd walker copies every non-glibc .so next to the
+#        binary; patchelf rewrites RPATH to $ORIGIN/lib.
+#     7. Verify: no missing deps, ghostty binary <= GLIBC_2.28, list any
+#        bundled .so still referencing newer glibc symbols.
+
 on:
   push:
     branches:
       - '**'
   workflow_dispatch:
 
+env:
+  PREFIX: /opt/deps
+  PY_PREFIX: /opt/python
+  ZIG_TARGET: x86_64-linux-gnu.2.28
+  MAX_GLIBC: "2.28"
+  # Single source of truth for pkg-config / PATH / LD_LIBRARY_PATH search.
+  # All build steps re-export these.
+  CFLAGS_BASE: "-fPIC -O2"
+  # Versions we pin (bump together when you want a fresh build).
+  V_PYTHON: "3.12.7"
+  V_ZLIB: "1.3.1"
+  V_LIBFFI: "3.4.6"
+  V_LIBXML2: "2.12.7"
+  V_GETTEXT: "0.22.5"
+  V_WAYLAND: "1.22.0"
+  V_WAYLAND_PROTOCOLS: "1.36"
+  V_XKBCOMMON: "1.6.0"
+  V_PIXMAN: "0.42.2"
+  V_FREETYPE: "2.13.2"
+  V_FONTCONFIG: "2.15.0"
+  V_HARFBUZZ: "8.5.0"
+  V_CAIRO: "1.18.0"
+  V_PANGO: "1.52.2"
+  V_GDK_PIXBUF: "2.42.10"
+  V_LIBEPOXY: "1.5.10"
+  V_GRAPHENE: "1.10.8"
+  V_GLIB: "2.78.4"
+  V_GTK4: "4.14.4"
+  V_LIBADWAITA: "1.5.4"
+  V_GTK4_LAYER_SHELL: "1.0.5"
+  V_BLUEPRINT: "0.16.0"
+
 jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: debian:13-slim
+      image: debian:10
       options: --user root
     env:
       DEBIAN_FRONTEND: noninteractive
       TZ: UTC
-      # Lock ghostty binary to glibc 2.28 (UOS20 baseline).
-      # Build host is debian:13 (glibc 2.41) but Zig provides multi-version
-      # glibc headers/stubs, so the resulting ghostty binary will only
-      # reference symbols up through GLIBC_2.28. The bundled GTK4 .so files
-      # will inevitably reference some glibc 2.29-2.41 symbols; we report
-      # those after the build for triage. Trixie is required because:
-      #   - libadwaita 1.7 (ghostty needs >= 1.5)
-      #   - blueprint-compiler 0.16 (ghostty needs >= 0.16)
-      #   - libgtk4-layer-shell-dev is also available here as a system pkg
-      # Earlier suites (bookworm, bullseye) all fail at least one of the above.
-      ZIG_TARGET: x86_64-linux-gnu.2.28
-      MAX_GLIBC: "2.28"
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Configure debian:10 archive sources
+        # buster has been moved to archive.debian.org; the default
+        # deb.debian.org URLs return 404 for buster.
+        run: |
+          set -eux
+          cat >/etc/apt/sources.list <<'EOF'
+          deb http://archive.debian.org/debian buster main
+          deb http://archive.debian.org/debian buster-updates main
+          deb http://archive.debian.org/debian-security buster/updates main
+          EOF
+          # buster is no longer signed by current keyring; allow it.
+          echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid
 
-      - name: Install build dependencies (system GTK4 stack)
+      - name: Install host build tools (apt)
         run: |
           set -eux
           apt-get update
           apt-get install -y --no-install-recommends \
             build-essential \
-            pkg-config \
-            ca-certificates curl wget xz-utils \
+            ca-certificates \
+            curl wget xz-utils tar gzip bzip2 \
             git \
-            python3 \
+            pkg-config \
+            autoconf automake libtool \
             patchelf file binutils \
             xxd \
-            libgtk-4-dev \
-            libadwaita-1-dev \
-            libgtk4-layer-shell-dev \
-            libwayland-dev \
-            libwayland-bin \
-            libxkbcommon-dev \
-            libbz2-dev \
-            libonig-dev \
-            libxml2-utils \
-            blueprint-compiler \
-            gettext \
-            tar gzip
+            bison flex \
+            gperf \
+            sed gawk \
+            python3
           rm -rf /var/lib/apt/lists/*
+          # Sanity
+          ldd --version | head -n1
+          gcc --version | head -n1
 
-      - name: Show environment versions
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache /opt/deps and /opt/python
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            /opt/deps
+            /opt/python
+          # Bump the v* prefix whenever the build script changes in a way
+          # that should force a fresh rebuild (independent of inputs).
+          key: uos-deps-v6-${{ hashFiles('.github/workflows/build-uos.yml') }}
+          restore-keys: |
+            uos-deps-v6-
+
+      - name: Install standalone Python 3.12 (debian:10's 3.7 is too old)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
-          gcc --version | head -n1
-          ldd --version | head -n1
-          pkg-config --modversion gtk4
-          pkg-config --modversion libadwaita-1
-          which wayland-scanner && wayland-scanner --version
+          mkdir -p "${PY_PREFIX}"
+          # python-build-standalone: prebuilt portable cpython.
+          # Picked the install_only build which is unpacked at PY_PREFIX/python.
+          PBS_TAG="20241016"
+          URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PBS_TAG}/cpython-${V_PYTHON}+${PBS_TAG}-x86_64-unknown-linux-gnu-install_only.tar.gz"
+          curl -fL "$URL" -o /tmp/py.tgz
+          tar -C "${PY_PREFIX}" -xzf /tmp/py.tgz --strip-components=1
+          rm /tmp/py.tgz
+          "${PY_PREFIX}/bin/python3" --version
+          "${PY_PREFIX}/bin/pip3" install --no-cache-dir --upgrade pip
+          "${PY_PREFIX}/bin/pip3" install --no-cache-dir \
+            "meson==1.5.2" \
+            "ninja==1.11.1.1" \
+            "blueprint-compiler==${V_BLUEPRINT}" \
+            "jinja2"
+          ln -sf "${PY_PREFIX}/bin/python3" "${PY_PREFIX}/bin/python"
+
+      - name: Make standalone Python and prefix tools visible
+        run: |
+          set -eux
+          # Re-export to GITHUB_PATH so subsequent steps inherit it.
+          echo "${PREFIX}/bin" >> "$GITHUB_PATH"
+          echo "${PY_PREFIX}/bin" >> "$GITHUB_PATH"
+
+      - name: Setup environment for source builds
+        run: |
+          {
+            echo "PKG_CONFIG_PATH=${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig"
+            echo "LD_LIBRARY_PATH=${PREFIX}/lib:/usr/lib/x86_64-linux-gnu:/usr/lib"
+            echo "ACLOCAL_PATH=${PREFIX}/share/aclocal:/usr/share/aclocal"
+            echo "PATH=${PREFIX}/bin:${PY_PREFIX}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          } >> "$GITHUB_ENV"
 
       - name: Install Zig
         uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
         with:
           version: 0.15.2
 
-      - name: Build Ghostty (glibc 2.28 target)
+      # ----- begin source builds (only when cache miss) -----
+
+      - name: Build zlib
+        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          cd /tmp
+          curl -fL "https://github.com/madler/zlib/releases/download/v${V_ZLIB}/zlib-${V_ZLIB}.tar.gz" -o zlib.tgz
+          tar xzf zlib.tgz
+          cd zlib-${V_ZLIB}
+          CFLAGS="${CFLAGS_BASE}" ./configure --prefix="${PREFIX}"
+          make -j"$(nproc)"
+          make install
+          pkg-config --modversion zlib
+
+      - name: Build libffi
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          curl -fL "https://github.com/libffi/libffi/releases/download/v${V_LIBFFI}/libffi-${V_LIBFFI}.tar.gz" -o libffi.tgz
+          tar xzf libffi.tgz
+          cd libffi-${V_LIBFFI}
+          CFLAGS="${CFLAGS_BASE}" ./configure --prefix="${PREFIX}" --disable-docs
+          make -j"$(nproc)"
+          make install
+          pkg-config --modversion libffi
+
+      - name: Build libxml2 (needed by gettext, fontconfig)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          # libxml2 release tarball naming: 2.12.7 -> 2.12/libxml2-2.12.7.tar.xz
+          MAJORMIN=$(echo "${V_LIBXML2}" | cut -d. -f1,2)
+          curl -fL "https://download.gnome.org/sources/libxml2/${MAJORMIN}/libxml2-${V_LIBXML2}.tar.xz" -o libxml2.txz
+          tar xJf libxml2.txz
+          cd libxml2-${V_LIBXML2}
+          CFLAGS="${CFLAGS_BASE}" ./configure \
+            --prefix="${PREFIX}" \
+            --without-python \
+            --without-lzma
+          make -j"$(nproc)"
+          make install
+          pkg-config --modversion libxml-2.0
+
+      - name: Build gettext (libintl)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          curl -fL "https://ftp.gnu.org/pub/gnu/gettext/gettext-${V_GETTEXT}.tar.xz" -o gettext.txz
+          tar xJf gettext.txz
+          cd gettext-${V_GETTEXT}
+          CFLAGS="${CFLAGS_BASE}" ./configure \
+            --prefix="${PREFIX}" \
+            --disable-java \
+            --disable-csharp \
+            --without-emacs \
+            --with-included-libxml \
+            --without-bzip2
+          make -j"$(nproc)"
+          make install
+          # gettext doesn't ship a .pc; verify the binary instead.
+          "${PREFIX}/bin/msgfmt" --version | head -n1
+
+      - name: Build glib (needs libffi, libxml2, zlib)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          MAJORMIN=$(echo "${V_GLIB}" | cut -d. -f1,2)
+          curl -fL "https://download.gnome.org/sources/glib/${MAJORMIN}/glib-${V_GLIB}.tar.xz" -o glib.txz
+          tar xJf glib.txz
+          cd glib-${V_GLIB}
+          rm -f subprojects/*.wrap
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=both \
+            --wrap-mode=nofallback \
+            -Dtests=false \
+            -Dintrospection=disabled \
+            -Dnls=disabled \
+            -Dxattr=false \
+            -Dman-pages=disabled \
+            -Ddocumentation=false \
+            -Dselinux=disabled \
+            -Dlibmount=disabled \
+            -Dsysprof=disabled
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion glib-2.0
+
+      - name: Build wayland (libwayland-client, server, scanner)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          curl -fL "https://gitlab.freedesktop.org/wayland/wayland/-/releases/${V_WAYLAND}/downloads/wayland-${V_WAYLAND}.tar.xz" -o wayland.txz
+          tar xJf wayland.txz
+          cd wayland-${V_WAYLAND}
+          rm -f subprojects/*.wrap
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=both \
+            --wrap-mode=nofallback \
+            -Ddocumentation=false \
+            -Ddtd_validation=true \
+            -Dtests=false
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion wayland-client
+          pkg-config --modversion wayland-scanner
+
+      - name: Build wayland-protocols
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          curl -fL "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/${V_WAYLAND_PROTOCOLS}/downloads/wayland-protocols-${V_WAYLAND_PROTOCOLS}.tar.xz" -o wayland-protocols.txz \
+            || curl -fL "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/archive/${V_WAYLAND_PROTOCOLS}/wayland-protocols-${V_WAYLAND_PROTOCOLS}.tar.gz" -o wayland-protocols.tgz
+          if [ -f wayland-protocols.txz ]; then tar xJf wayland-protocols.txz; else tar xzf wayland-protocols.tgz; fi
+          cd wayland-protocols-${V_WAYLAND_PROTOCOLS}
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            -Dtests=false
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion wayland-protocols
+
+      - name: Build libxkbcommon (no X11)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          curl -fL "https://xkbcommon.org/download/libxkbcommon-${V_XKBCOMMON}.tar.xz" -o xkb.txz
+          tar xJf xkb.txz
+          cd libxkbcommon-${V_XKBCOMMON}
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=both \
+            --wrap-mode=nofallback \
+            -Denable-wayland=true \
+            -Denable-x11=false \
+            -Denable-docs=false \
+            -Denable-xkbregistry=false \
+            -Denable-tools=false
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion xkbcommon
+
+      - name: Build pixman
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          curl -fL "https://cairographics.org/releases/pixman-${V_PIXMAN}.tar.gz" -o pixman.tgz
+          tar xzf pixman.tgz
+          cd pixman-${V_PIXMAN}
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=both \
+            --wrap-mode=nofallback \
+            -Dtests=disabled \
+            -Dgtk=disabled \
+            -Dlibpng=disabled
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion pixman-1
+
+      - name: Build freetype (initial, without harfbuzz)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          curl -fL "https://download.savannah.gnu.org/releases/freetype/freetype-${V_FREETYPE}.tar.xz" -o freetype.txz
+          tar xJf freetype.txz
+          cd freetype-${V_FREETYPE}
+          # First build without harfbuzz (cyclic). We'll rebuild after harfbuzz.
+          ./configure \
+            --prefix="${PREFIX}" \
+            --without-harfbuzz \
+            --with-png=yes \
+            --with-zlib=yes \
+            --with-bzip2=no \
+            --with-brotli=no \
+            CFLAGS="${CFLAGS_BASE}"
+          make -j"$(nproc)"
+          make install
+          pkg-config --modversion freetype2
+
+      - name: Build fontconfig (no xft, no docs)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          curl -fL "https://www.freedesktop.org/software/fontconfig/release/fontconfig-${V_FONTCONFIG}.tar.xz" -o fc.txz
+          tar xJf fc.txz
+          cd fontconfig-${V_FONTCONFIG}
+          # Use autotools path: avoids meson asking for a Sphinx etc.
+          ./configure \
+            --prefix="${PREFIX}" \
+            --enable-shared \
+            --enable-static \
+            --disable-docs \
+            --disable-nls \
+            --enable-libxml2 \
+            CFLAGS="${CFLAGS_BASE}" \
+            CPPFLAGS="-I${PREFIX}/include" \
+            LDFLAGS="-L${PREFIX}/lib"
+          make -j"$(nproc)"
+          make install
+          pkg-config --modversion fontconfig
+
+      - name: Build harfbuzz
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          curl -fL "https://github.com/harfbuzz/harfbuzz/releases/download/${V_HARFBUZZ}/harfbuzz-${V_HARFBUZZ}.tar.xz" -o hb.txz
+          tar xJf hb.txz
+          cd harfbuzz-${V_HARFBUZZ}
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=both \
+            --wrap-mode=nofallback \
+            -Dtests=disabled \
+            -Ddocs=disabled \
+            -Dintrospection=disabled \
+            -Dicu=disabled \
+            -Dgraphite2=disabled \
+            -Dchafa=disabled \
+            -Dfreetype=enabled \
+            -Dglib=enabled \
+            -Dgobject=disabled \
+            -Dcairo=disabled \
+            -Dutilities=disabled
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion harfbuzz
+
+      - name: Rebuild freetype with harfbuzz support
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp/freetype-${V_FREETYPE}
+          make distclean || true
+          ./configure \
+            --prefix="${PREFIX}" \
+            --with-harfbuzz=yes \
+            --with-png=yes \
+            --with-zlib=yes \
+            --with-bzip2=no \
+            --with-brotli=no \
+            CFLAGS="${CFLAGS_BASE}" \
+            CPPFLAGS="-I${PREFIX}/include $(pkg-config --cflags harfbuzz)" \
+            LDFLAGS="-L${PREFIX}/lib"
+          make -j"$(nproc)"
+          make install
+          pkg-config --modversion freetype2
+
+      - name: Build cairo (wayland-only, no xft, no x11, no win/quartz)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          curl -fL "https://cairographics.org/releases/cairo-${V_CAIRO}.tar.xz" -o cairo.txz
+          tar xJf cairo.txz
+          cd cairo-${V_CAIRO}
+          rm -f subprojects/*.wrap
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=both \
+            --wrap-mode=nofallback \
+            -Dtests=disabled \
+            -Dxlib=disabled \
+            -Dxcb=disabled \
+            -Dquartz=disabled \
+            -Dfreetype=enabled \
+            -Dfontconfig=enabled \
+            -Dpng=enabled \
+            -Dzlib=enabled \
+            -Dglib=enabled
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion cairo
+          pkg-config --modversion cairo-ft
+
+      - name: Build pango (no xft, fontconfig + freetype only)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          MAJORMIN=$(echo "${V_PANGO}" | cut -d. -f1,2)
+          curl -fL "https://download.gnome.org/sources/pango/${MAJORMIN}/pango-${V_PANGO}.tar.xz" -o pango.txz
+          tar xJf pango.txz
+          cd pango-${V_PANGO}
+          rm -f subprojects/*.wrap
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=both \
+            --wrap-mode=nofallback \
+            -Dintrospection=disabled \
+            -Dgtk_doc=false \
+            -Dxft=disabled \
+            -Dcairo=enabled \
+            -Dlibthai=disabled \
+            -Dfreetype=enabled \
+            -Dfontconfig=enabled
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion pango
+          pkg-config --modversion pangocairo
+
+      - name: Build gdk-pixbuf (png + jpeg builtin loaders only)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          MAJORMIN=$(echo "${V_GDK_PIXBUF}" | cut -d. -f1,2)
+          curl -fL "https://download.gnome.org/sources/gdk-pixbuf/${MAJORMIN}/gdk-pixbuf-${V_GDK_PIXBUF}.tar.xz" -o gdk.txz
+          tar xJf gdk.txz
+          cd gdk-pixbuf-${V_GDK_PIXBUF}
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=both \
+            --wrap-mode=nofallback \
+            -Dintrospection=disabled \
+            -Dinstalled_tests=false \
+            -Dgio_sniffing=false \
+            -Dman=false \
+            -Dgtk_doc=false \
+            -Dbuiltin_loaders=png \
+            -Dpng=enabled \
+            -Dtiff=disabled \
+            -Djpeg=disabled \
+            -Dothers=disabled
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion gdk-pixbuf-2.0
+
+      - name: Build libepoxy (egl, wayland; no glx/x11)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          curl -fL "https://github.com/anholt/libepoxy/archive/refs/tags/${V_LIBEPOXY}.tar.gz" -o epoxy.tgz
+          tar xzf epoxy.tgz
+          cd libepoxy-${V_LIBEPOXY}
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=both \
+            --wrap-mode=nofallback \
+            -Dtests=false \
+            -Dglx=no \
+            -Degl=yes \
+            -Dx11=false
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion epoxy
+
+      - name: Build graphene
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          curl -fL "https://github.com/ebassi/graphene/archive/refs/tags/${V_GRAPHENE}.tar.gz" -o graphene.tgz
+          tar xzf graphene.tgz
+          cd graphene-${V_GRAPHENE}
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=both \
+            --wrap-mode=nofallback \
+            -Dtests=false \
+            -Dintrospection=disabled \
+            -Dgobject_types=true
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion graphene-1.0
+
+      - name: Build GTK4 (wayland-only, no x11/vulkan/cups/colord/sysprof)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          MAJORMIN=$(echo "${V_GTK4}" | cut -d. -f1,2)
+          curl -fL "https://download.gnome.org/sources/gtk/${MAJORMIN}/gtk-${V_GTK4}.tar.xz" -o gtk.txz
+          tar xJf gtk.txz
+          cd gtk-${V_GTK4}
+          rm -f subprojects/*.wrap
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=both \
+            --wrap-mode=nofallback \
+            -Dwayland-backend=true \
+            -Dx11-backend=false \
+            -Dwin32-backend=false \
+            -Dmacos-backend=false \
+            -Dbroadway-backend=false \
+            -Dprint-backends=file \
+            -Dcloudproviders=disabled \
+            -Dsysprof=disabled \
+            -Dtracker=disabled \
+            -Dcolord=disabled \
+            -Dvulkan=disabled \
+            -Dintrospection=disabled \
+            -Dbuild-demos=false \
+            -Dbuild-tests=false \
+            -Dbuild-testsuite=false \
+            -Dbuild-examples=false \
+            -Dmedia-gstreamer=disabled \
+            -Dman-pages=false \
+            -Dgtk_doc=false
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion gtk4
+
+      - name: Build libadwaita
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          MAJORMIN=$(echo "${V_LIBADWAITA}" | cut -d. -f1,2)
+          curl -fL "https://download.gnome.org/sources/libadwaita/${MAJORMIN}/libadwaita-${V_LIBADWAITA}.tar.xz" -o adw.txz
+          tar xJf adw.txz
+          cd libadwaita-${V_LIBADWAITA}
+          rm -f subprojects/*.wrap
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=both \
+            --wrap-mode=nofallback \
+            -Dtests=false \
+            -Dexamples=false \
+            -Dvapi=false \
+            -Dintrospection=disabled \
+            -Dgtk_doc=false
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion libadwaita-1
+
+      - name: Build gtk4-layer-shell
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          curl -fL "https://github.com/wmww/gtk4-layer-shell/archive/refs/tags/v${V_GTK4_LAYER_SHELL}.tar.gz" -o lshell.tgz
+          tar xzf lshell.tgz
+          cd gtk4-layer-shell-${V_GTK4_LAYER_SHELL}
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=both \
+            --wrap-mode=nofallback \
+            -Dtests=false \
+            -Dexamples=false \
+            -Ddocs=false \
+            -Dintrospection=disabled \
+            -Dvapi=false
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion gtk4-layer-shell-0
+
+      # ----- end source builds -----
+
+      - name: Show final dependency versions
+        run: |
+          set -eux
+          echo "Python: $(python --version)"
+          echo "Meson: $(meson --version)"
+          echo "Blueprint: $(blueprint-compiler --version)"
+          for pc in glib-2.0 gtk4 libadwaita-1 pango cairo cairo-ft fontconfig harfbuzz freetype2 \
+                    epoxy graphene-1.0 wayland-client xkbcommon gtk4-layer-shell-0 gdk-pixbuf-2.0; do
+            v=$(pkg-config --modversion "$pc" 2>/dev/null || echo MISSING)
+            printf "  %-22s %s\n" "$pc" "$v"
+          done
+
+      - name: Build Ghostty
+        run: |
+          set -eux
+          # Tell ghostty to use the system (== /opt/deps) GTK4 stack
+          # rather than its own bundled fontconfig/freetype/harfbuzz/png.
+          # We prefer linking the freshly-built stack so the run-time .so
+          # set we collect later matches.
           zig build \
             -Doptimize=ReleaseSafe \
-            -Dtarget=${ZIG_TARGET} \
+            -Dtarget="${ZIG_TARGET}" \
             -Dcpu=x86_64_v2 \
             -Dapp-runtime=gtk \
             -Dgtk-x11=false \
             -Dgtk-wayland=true \
-            -Dpie=true
+            -Dpie=true \
+            --search-prefix "${PREFIX}"
           ls -la zig-out/bin/
 
-      - name: Inspect binary
+      - name: Inspect main binary
         run: |
           set -eux
           file zig-out/bin/ghostty
           echo "--- ldd ---"
-          ldd zig-out/bin/ghostty || true
-          echo "--- glibc symbol versions referenced by binary ---"
+          LD_LIBRARY_PATH="${PREFIX}/lib:${LD_LIBRARY_PATH}" ldd zig-out/bin/ghostty || true
+          echo "--- glibc symbols referenced ---"
           objdump -T zig-out/bin/ghostty 2>/dev/null \
-            | awk '/GLIBC_/ { for(i=1;i<=NF;i++) if($i ~ /^GLIBC_/) print $i }' \
+            | awk '/GLIBC_/ { for(i=1;i<=NF;i++) if($i ~ /^GLIBC_[0-9]/) print $i }' \
             | sort -uV || true
 
-      - name: Verify ghostty binary itself does not reference glibc > 2.28
+      - name: Verify ghostty binary <= GLIBC_${{ env.MAX_GLIBC }}
         run: |
           set -eux
           MAX_USED=$(
@@ -106,28 +717,25 @@ jobs:
               | sort -uV \
               | tail -n1
           )
-          echo "Highest GLIBC symbol referenced by ghostty: ${MAX_USED:-none}"
+          echo "Highest GLIBC referenced by ghostty: ${MAX_USED:-none}"
           if [ -z "$MAX_USED" ]; then
-            echo "WARNING: no GLIBC symbol references found (very unlikely)"
+            echo "WARNING: no GLIBC refs found"
             exit 0
           fi
-          # Compare versions: max allowed is $MAX_GLIBC
           HIGHEST=$(printf '%s\n%s\n' "$MAX_GLIBC" "$MAX_USED" | sort -V | tail -n1)
           if [ "$HIGHEST" != "$MAX_GLIBC" ]; then
-            echo "ERROR: ghostty binary references GLIBC_${MAX_USED} > GLIBC_${MAX_GLIBC}"
+            echo "ERROR: ghostty references GLIBC_${MAX_USED} > GLIBC_${MAX_GLIBC}"
             exit 1
           fi
-          echo "OK: ghostty binary capped at GLIBC_${MAX_USED} <= GLIBC_${MAX_GLIBC}"
+          echo "OK: GLIBC_${MAX_USED} <= GLIBC_${MAX_GLIBC}"
 
-      - name: Bundle dynamic libraries (recursive ldd, exclude glibc)
+      - name: Bundle dynamic libraries (recursive)
         run: |
           set -eux
           OUT=dist/ghostty-uos-amd64
           mkdir -p "$OUT/lib"
           cp zig-out/bin/ghostty "$OUT/ghostty"
 
-          # Glibc-provided libs that we must NOT bundle (they are the system contract).
-          # Everything else we ship next to the binary.
           is_glibc_lib() {
             case "$1" in
               linux-vdso.so*|ld-linux-*.so*|libc.so*|libm.so*|libdl.so*|\
@@ -137,26 +745,22 @@ jobs:
             esac
           }
 
-          # Recursive collection: BFS over dependencies.
           declare -A SEEN=()
           QUEUE=("$OUT/ghostty")
+
+          # Make sure ldd resolves through /opt/deps first.
+          export LD_LIBRARY_PATH="${PREFIX}/lib:/usr/lib/x86_64-linux-gnu:/usr/lib"
 
           while [ ${#QUEUE[@]} -gt 0 ]; do
             target="${QUEUE[0]}"
             QUEUE=("${QUEUE[@]:1}")
-
-            # Run ldd, parse "name => path" entries.
             while IFS= read -r line; do
-              # Lines look like:
-              #   libfoo.so.1 => /usr/lib/x86_64-linux-gnu/libfoo.so.1 (0x...)
-              #   linux-vdso.so.1 (0x...)
-              #   /lib64/ld-linux-x86-64.so.2 (0x...)
               name=$(echo "$line" | awk '{print $1}')
               path=$(echo "$line" | awk '{
                 for (i=1;i<=NF;i++) if ($i=="=>") { print $(i+1); exit }
               }')
               [ -z "$path" ] && continue
-              [ "$path" = "not" ] && continue   # "not found"
+              [ "$path" = "not" ] && continue
               if is_glibc_lib "$name"; then
                 continue
               fi
@@ -169,8 +773,6 @@ jobs:
                 continue
               fi
               SEEN[$base]=1
-
-              # Copy the resolved real file under the symlink name.
               cp -L "$real" "$OUT/lib/$base"
               chmod u+w "$OUT/lib/$base"
               QUEUE+=("$OUT/lib/$base")
@@ -187,38 +789,37 @@ jobs:
           patchelf --set-rpath '$ORIGIN/lib' "$OUT/ghostty"
           for so in "$OUT/lib/"*.so*; do
             [ -f "$so" ] || continue
-            # Only patch ELFs (skip stray non-ELF files just in case).
             if file "$so" | grep -q ELF; then
               patchelf --set-rpath '$ORIGIN' "$so" || true
             fi
           done
 
-      - name: Verify final bundle (no missing deps, no glibc>${{ env.MAX_GLIBC }})
+      - name: Verify final bundle (no missing deps, glibc scan)
         run: |
           set -euo pipefail
           OUT=dist/ghostty-uos-amd64
           cd "$OUT"
 
-          echo "=== ldd of main binary (run from bundle dir) ==="
+          echo "=== ldd ./ghostty ==="
           ldd ./ghostty
 
           echo
-          echo "=== Checking for 'not found' entries ==="
+          echo "=== check 'not found' ==="
           if ldd ./ghostty | grep -F "not found"; then
-            echo "ERROR: ghostty has unresolved dependencies"
+            echo "ERROR: unresolved deps in ghostty"
             exit 1
           fi
           for so in lib/*.so*; do
             [ -f "$so" ] || continue
             if ldd "$so" 2>/dev/null | grep -F "not found"; then
-              echo "ERROR: $so has unresolved dependencies"
+              echo "ERROR: unresolved deps in $so"
               exit 1
             fi
           done
-          echo "OK: no missing dependencies"
+          echo "OK: no missing deps"
 
           echo
-          echo "=== glibc symbol scan over bundle ==="
+          echo "=== glibc symbol scan ==="
           MAX="${MAX_GLIBC}"
           OFFENDERS=()
           scan_one() {
@@ -250,12 +851,8 @@ jobs:
 
           echo
           if [ ${#OFFENDERS[@]} -gt 0 ]; then
-            echo "WARNING: ${#OFFENDERS[@]} bundled file(s) reference GLIBC > ${MAX}:"
+            echo "WARNING: ${#OFFENDERS[@]} bundled file(s) over GLIBC_${MAX}:"
             for o in "${OFFENDERS[@]}"; do echo "  - $o"; done
-            echo
-            echo "These will fail at runtime on UOS20 unless those specific"
-            echo "symbols happen to not be called. Listing for triage; not"
-            echo "failing the build yet."
           else
             echo "OK: every file in the bundle stays within GLIBC_${MAX}"
           fi
@@ -266,9 +863,7 @@ jobs:
           cd dist
           tar czf ghostty-uos-amd64.tar.gz ghostty-uos-amd64
           ls -lh ghostty-uos-amd64.tar.gz
-          echo
-          echo "=== Tarball contents (top 50) ==="
-          tar tzf ghostty-uos-amd64.tar.gz | head -n 50
+          tar tzf ghostty-uos-amd64.tar.gz | head -n 60
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -283,8 +878,8 @@ jobs:
           {
             echo "## Build summary"
             echo
-            echo "- Build host: \`debian:13-slim\` (glibc 2.41)"
-            echo "- Target: \`${ZIG_TARGET}\`, max glibc \`GLIBC_${MAX_GLIBC}\`"
+            echo "- Build host: \`debian:10\` (glibc 2.28, exact UOS20 match)"
+            echo "- Target: \`${ZIG_TARGET}\`, ghostty bin capped at GLIBC_${MAX_GLIBC}"
             echo "- App runtime: GTK4 / Wayland"
             echo
             if [ -f dist/ghostty-uos-amd64.tar.gz ]; then
