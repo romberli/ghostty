@@ -258,11 +258,10 @@ jobs:
             --default-library=both \
             --wrap-mode=nofallback \
             -Dtests=false \
-            -Dintrospection=disabled \
             -Dnls=disabled \
             -Dxattr=false \
-            -Dman-pages=disabled \
-            -Ddocumentation=false \
+            -Dman=false \
+            -Dgtk_doc=false \
             -Dselinux=disabled \
             -Dlibmount=disabled \
             -Dsysprof=disabled
@@ -467,6 +466,9 @@ jobs:
             -Dxlib=disabled \
             -Dxcb=disabled \
             -Dquartz=disabled \
+            -Ddwrite=disabled \
+            -Dspectre=disabled \
+            -Dsymbol-lookup=disabled \
             -Dfreetype=enabled \
             -Dfontconfig=enabled \
             -Dpng=enabled \
@@ -598,7 +600,8 @@ jobs:
             -Dwin32-backend=false \
             -Dmacos-backend=false \
             -Dbroadway-backend=false \
-            -Dprint-backends=file \
+            -Dprint-cups=disabled \
+            -Dprint-cpdb=disabled \
             -Dcloudproviders=disabled \
             -Dsysprof=disabled \
             -Dtracker=disabled \
@@ -611,6 +614,7 @@ jobs:
             -Dbuild-examples=false \
             -Dmedia-gstreamer=disabled \
             -Dman-pages=false \
+            -Ddocumentation=false \
             -Dgtk_doc=false
           ninja -C build -j"$(nproc)"
           ninja -C build install
