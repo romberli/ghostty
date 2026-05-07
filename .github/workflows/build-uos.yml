@@ -53,6 +53,7 @@ env:
   V_LIBFFI: "3.4.6"
   V_LIBXML2: "2.12.7"
   V_GETTEXT: "0.22.5"
+  V_PCRE2: "10.43"
   V_WAYLAND: "1.22.0"
   V_WAYLAND_PROTOCOLS: "1.36"
   V_XKBCOMMON: "1.6.0"
@@ -241,7 +242,28 @@ jobs:
           # gettext doesn't ship a .pc; verify the binary instead.
           "${PREFIX}/bin/msgfmt" --version | head -n1
 
-      - name: Build glib (needs libffi, libxml2, zlib)
+      - name: Build pcre2 (needed by glib 2.78)
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          cd /tmp
+          curl -fL "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-${V_PCRE2}/pcre2-${V_PCRE2}.tar.bz2" -o pcre2.tbz
+          tar xjf pcre2.tbz
+          cd pcre2-${V_PCRE2}
+          CFLAGS="${CFLAGS_BASE}" ./configure \
+            --prefix="${PREFIX}" \
+            --enable-pcre2-8 \
+            --enable-pcre2-16 \
+            --enable-pcre2-32 \
+            --disable-pcre2grep-libz \
+            --disable-pcre2grep-libbz2 \
+            --enable-shared \
+            --enable-static
+          make -j"$(nproc)"
+          make install
+          pkg-config --modversion libpcre2-8
+
+      - name: Build glib (needs libffi, libxml2, zlib, pcre2)
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
