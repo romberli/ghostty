@@ -143,16 +143,17 @@ jobs:
           path: |
             /opt/deps
             /opt/python
-          # Bump the v* prefix whenever the build script changes in a way
-          # that should force a fresh rebuild (independent of inputs).
-          key: uos-deps-v6-${{ hashFiles('.github/workflows/build-uos.yml') }}
+          # We key on a manual version rather than yml hash so cache survives
+          # iterative workflow tweaks. Bump the v* prefix to force a clean
+          # rebuild from scratch.
+          key: uos-deps-v7-${{ github.run_id }}
           restore-keys: |
-            uos-deps-v6-
+            uos-deps-v7-
 
       - name: Install standalone Python 3.12 (debian:10's 3.7 is too old)
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -x "/opt/python/bin/python3" ]; then echo "skip: python already installed"; exit 0; fi
           mkdir -p "${PY_PREFIX}"
           # python-build-standalone: prebuilt portable cpython.
           # Picked the install_only build which is unpacked at PY_PREFIX/python.
@@ -194,9 +195,9 @@ jobs:
       # ----- begin source builds (only when cache miss) -----
 
       - name: Build zlib
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/zlib.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/zlib.pc present"; exit 0; fi
           cd /tmp
           curl -fL "https://github.com/madler/zlib/releases/download/v${V_ZLIB}/zlib-${V_ZLIB}.tar.gz" -o zlib.tgz
           tar xzf zlib.tgz
@@ -207,9 +208,9 @@ jobs:
           pkg-config --modversion zlib
 
       - name: Build libffi
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/libffi.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/libffi.pc present"; exit 0; fi
           cd /tmp
           curl -fL "https://github.com/libffi/libffi/releases/download/v${V_LIBFFI}/libffi-${V_LIBFFI}.tar.gz" -o libffi.tgz
           tar xzf libffi.tgz
@@ -220,9 +221,9 @@ jobs:
           pkg-config --modversion libffi
 
       - name: Build libxml2 (needed by gettext, fontconfig)
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/libxml-2.0.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/libxml-2.0.pc present"; exit 0; fi
           cd /tmp
           # libxml2 release tarball naming: 2.12.7 -> 2.12/libxml2-2.12.7.tar.xz
           MAJORMIN=$(echo "${V_LIBXML2}" | cut -d. -f1,2)
@@ -242,9 +243,9 @@ jobs:
       # via libc itself. Skipping gettext saves ~5 minutes.
 
       - name: Build pcre2 (needed by glib 2.78)
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/libpcre2-8.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/libpcre2-8.pc present"; exit 0; fi
           cd /tmp
           curl -fL "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-${V_PCRE2}/pcre2-${V_PCRE2}.tar.bz2" -o pcre2.tbz
           tar xjf pcre2.tbz
@@ -263,9 +264,9 @@ jobs:
           pkg-config --modversion libpcre2-8
 
       - name: Build glib (needs libffi, libxml2, zlib, pcre2)
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/glib-2.0.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/glib-2.0.pc present"; exit 0; fi
           cd /tmp
           MAJORMIN=$(echo "${V_GLIB}" | cut -d. -f1,2)
           curl -fL "https://download.gnome.org/sources/glib/${MAJORMIN}/glib-${V_GLIB}.tar.xz" -o glib.txz
@@ -291,9 +292,9 @@ jobs:
           pkg-config --modversion glib-2.0
 
       - name: Build wayland (libwayland-client, server, scanner)
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/wayland-client.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/wayland-client.pc present"; exit 0; fi
           cd /tmp
           curl -fL "https://gitlab.freedesktop.org/wayland/wayland/-/releases/${V_WAYLAND}/downloads/wayland-${V_WAYLAND}.tar.xz" -o wayland.txz
           tar xJf wayland.txz
@@ -314,9 +315,9 @@ jobs:
           pkg-config --modversion wayland-scanner
 
       - name: Build wayland-protocols
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/share/pkgconfig/wayland-protocols.pc" ]; then echo "skip: marker /opt/deps/share/pkgconfig/wayland-protocols.pc present"; exit 0; fi
           cd /tmp
           curl -fL "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/${V_WAYLAND_PROTOCOLS}/downloads/wayland-protocols-${V_WAYLAND_PROTOCOLS}.tar.xz" -o wayland-protocols.txz \
             || curl -fL "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/archive/${V_WAYLAND_PROTOCOLS}/wayland-protocols-${V_WAYLAND_PROTOCOLS}.tar.gz" -o wayland-protocols.tgz
@@ -332,9 +333,9 @@ jobs:
           pkg-config --modversion wayland-protocols
 
       - name: Build libxkbcommon (no X11)
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/xkbcommon.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/xkbcommon.pc present"; exit 0; fi
           cd /tmp
           curl -fL "https://xkbcommon.org/download/libxkbcommon-${V_XKBCOMMON}.tar.xz" -o xkb.txz
           tar xJf xkb.txz
@@ -355,9 +356,9 @@ jobs:
           pkg-config --modversion xkbcommon
 
       - name: Build pixman
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/pixman-1.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/pixman-1.pc present"; exit 0; fi
           cd /tmp
           curl -fL "https://cairographics.org/releases/pixman-${V_PIXMAN}.tar.gz" -o pixman.tgz
           tar xzf pixman.tgz
@@ -376,9 +377,9 @@ jobs:
           pkg-config --modversion pixman-1
 
       - name: Build freetype (initial, without harfbuzz)
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/freetype2.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/freetype2.pc present"; exit 0; fi
           cd /tmp
           curl -fL "https://download.savannah.gnu.org/releases/freetype/freetype-${V_FREETYPE}.tar.xz" -o freetype.txz
           tar xJf freetype.txz
@@ -397,9 +398,9 @@ jobs:
           pkg-config --modversion freetype2
 
       - name: Build fontconfig (no xft, no docs)
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/fontconfig.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/fontconfig.pc present"; exit 0; fi
           cd /tmp
           curl -fL "https://www.freedesktop.org/software/fontconfig/release/fontconfig-${V_FONTCONFIG}.tar.xz" -o fc.txz
           tar xJf fc.txz
@@ -420,9 +421,9 @@ jobs:
           pkg-config --modversion fontconfig
 
       - name: Build harfbuzz
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/harfbuzz.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/harfbuzz.pc present"; exit 0; fi
           cd /tmp
           curl -fL "https://github.com/harfbuzz/harfbuzz/releases/download/${V_HARFBUZZ}/harfbuzz-${V_HARFBUZZ}.tar.xz" -o hb.txz
           tar xJf hb.txz
@@ -449,9 +450,9 @@ jobs:
           pkg-config --modversion harfbuzz
 
       - name: Rebuild freetype with harfbuzz support
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/.freetype-with-harfbuzz" ]; then echo "skip: marker /opt/deps/.freetype-with-harfbuzz present"; exit 0; fi
           cd /tmp/freetype-${V_FREETYPE}
           make distclean || true
           ./configure \
@@ -467,11 +468,12 @@ jobs:
           make -j"$(nproc)"
           make install
           pkg-config --modversion freetype2
+          touch /opt/deps/.freetype-with-harfbuzz
 
       - name: Build cairo (wayland-only, no xft, no x11, no win/quartz)
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/cairo-ft.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/cairo-ft.pc present"; exit 0; fi
           cd /tmp
           curl -fL "https://cairographics.org/releases/cairo-${V_CAIRO}.tar.xz" -o cairo.txz
           tar xJf cairo.txz
@@ -501,9 +503,9 @@ jobs:
           pkg-config --modversion cairo-ft
 
       - name: Build fribidi (debian:10 has 1.0.5, pango needs >= 1.0.6)
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/fribidi.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/fribidi.pc present"; exit 0; fi
           cd /tmp
           curl -fL "https://github.com/fribidi/fribidi/releases/download/v${V_FRIBIDI}/fribidi-${V_FRIBIDI}.tar.xz" -o fribidi.txz
           tar xJf fribidi.txz
@@ -522,9 +524,9 @@ jobs:
           pkg-config --modversion fribidi
 
       - name: Build pango (no xft, fontconfig + freetype only)
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/pangocairo.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/pangocairo.pc present"; exit 0; fi
           cd /tmp
           MAJORMIN=$(echo "${V_PANGO}" | cut -d. -f1,2)
           curl -fL "https://download.gnome.org/sources/pango/${MAJORMIN}/pango-${V_PANGO}.tar.xz" -o pango.txz
@@ -550,9 +552,9 @@ jobs:
           pkg-config --modversion pangocairo
 
       - name: Build gdk-pixbuf (png + jpeg builtin loaders only)
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/gdk-pixbuf-2.0.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/gdk-pixbuf-2.0.pc present"; exit 0; fi
           cd /tmp
           MAJORMIN=$(echo "${V_GDK_PIXBUF}" | cut -d. -f1,2)
           curl -fL "https://download.gnome.org/sources/gdk-pixbuf/${MAJORMIN}/gdk-pixbuf-${V_GDK_PIXBUF}.tar.xz" -o gdk.txz
@@ -578,9 +580,9 @@ jobs:
           pkg-config --modversion gdk-pixbuf-2.0
 
       - name: Build libepoxy (egl, wayland; no glx/x11)
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/epoxy.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/epoxy.pc present"; exit 0; fi
           cd /tmp
           curl -fL "https://github.com/anholt/libepoxy/archive/refs/tags/${V_LIBEPOXY}.tar.gz" -o epoxy.tgz
           tar xzf epoxy.tgz
@@ -600,9 +602,9 @@ jobs:
           pkg-config --modversion epoxy
 
       - name: Build graphene
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/graphene-1.0.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/graphene-1.0.pc present"; exit 0; fi
           cd /tmp
           curl -fL "https://github.com/ebassi/graphene/archive/refs/tags/${V_GRAPHENE}.tar.gz" -o graphene.tgz
           tar xzf graphene.tgz
@@ -621,9 +623,9 @@ jobs:
           pkg-config --modversion graphene-1.0
 
       - name: Build GTK4 (wayland-only, no x11/vulkan/cups/colord/sysprof)
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/gtk4.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/gtk4.pc present"; exit 0; fi
           cd /tmp
           MAJORMIN=$(echo "${V_GTK4}" | cut -d. -f1,2)
           curl -fL "https://download.gnome.org/sources/gtk/${MAJORMIN}/gtk-${V_GTK4}.tar.xz" -o gtk.txz
@@ -662,9 +664,9 @@ jobs:
           pkg-config --modversion gtk4
 
       - name: Build libxmlb (needed by appstream; buster has too old)
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/xmlb.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/xmlb.pc present"; exit 0; fi
           cd /tmp
           curl -fL "https://github.com/hughsie/libxmlb/archive/refs/tags/${V_LIBXMLB}.tar.gz" -o xmlb.tgz
           tar xzf xmlb.tgz
@@ -684,9 +686,9 @@ jobs:
           pkg-config --modversion xmlb
 
       - name: Build appstream (needed by libadwaita 1.5+)
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/appstream.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/appstream.pc present"; exit 0; fi
           cd /tmp
           curl -fL "https://github.com/ximion/appstream/archive/refs/tags/v${V_APPSTREAM}.tar.gz" -o appstream.tgz
           tar xzf appstream.tgz
@@ -714,9 +716,9 @@ jobs:
           pkg-config --modversion appstream
 
       - name: Build libadwaita
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/libadwaita-1.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/libadwaita-1.pc present"; exit 0; fi
           cd /tmp
           MAJORMIN=$(echo "${V_LIBADWAITA}" | cut -d. -f1,2)
           curl -fL "https://download.gnome.org/sources/libadwaita/${MAJORMIN}/libadwaita-${V_LIBADWAITA}.tar.xz" -o adw.txz
@@ -739,9 +741,9 @@ jobs:
           pkg-config --modversion libadwaita-1
 
       - name: Build gtk4-layer-shell
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/gtk4-layer-shell-0.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/gtk4-layer-shell-0.pc present"; exit 0; fi
           cd /tmp
           curl -fL "https://github.com/wmww/gtk4-layer-shell/archive/refs/tags/v${V_GTK4_LAYER_SHELL}.tar.gz" -o lshell.tgz
           tar xzf lshell.tgz
