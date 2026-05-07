@@ -123,7 +123,8 @@ jobs:
             libgl1-mesa-dev \
             libgles2-mesa-dev \
             libcurl4-openssl-dev \
-            libyaml-dev
+            libyaml-dev \
+            libzstd-dev
           rm -rf /var/lib/apt/lists/*
           # Sanity
           ldd --version | head -n1
@@ -702,7 +703,9 @@ jobs:
             -Dsystemd=false \
             -Dapt-support=false \
             -Dvapi=false \
-            -Dcompose=false
+            -Dcompose=false \
+            -Dzstd-support=false \
+            -Dqt=false
           ninja -C build -j"$(nproc)"
           ninja -C build install
           pkg-config --modversion appstream
