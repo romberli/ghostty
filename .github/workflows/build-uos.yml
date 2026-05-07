@@ -42,8 +42,8 @@ jobs:
             xxd \
             libgtk-4-dev \
             libadwaita-1-dev \
-            libgtk4-layer-shell-dev \
             libwayland-dev \
+            libwayland-bin \
             libxkbcommon-dev \
             libbz2-dev \
             libonig-dev \
@@ -60,7 +60,7 @@ jobs:
           ldd --version | head -n1
           pkg-config --modversion gtk4
           pkg-config --modversion libadwaita-1
-          pkg-config --modversion gtk4-layer-shell-0 || true
+          which wayland-scanner && wayland-scanner --version
 
       - name: Install Zig
         uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
