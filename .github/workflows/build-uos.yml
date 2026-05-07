@@ -127,7 +127,8 @@ jobs:
             libzstd-dev \
             libonig-dev \
             libbz2-dev \
-            gettext
+            gettext \
+            itstool
           rm -rf /var/lib/apt/lists/*
           # Sanity
           ldd --version | head -n1
