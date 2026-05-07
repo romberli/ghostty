@@ -124,7 +124,10 @@ jobs:
             libgles2-mesa-dev \
             libcurl4-openssl-dev \
             libyaml-dev \
-            libzstd-dev
+            libzstd-dev \
+            libonig-dev \
+            libbz2-dev \
+            gettext
           rm -rf /var/lib/apt/lists/*
           # Sanity
           ldd --version | head -n1
