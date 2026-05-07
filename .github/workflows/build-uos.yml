@@ -116,7 +116,10 @@ jobs:
             libexpat1-dev \
             libpng-dev \
             libjpeg-dev \
-            libtiff-dev
+            libtiff-dev \
+            libegl1-mesa-dev \
+            libgl1-mesa-dev \
+            libgles2-mesa-dev
           rm -rf /var/lib/apt/lists/*
           # Sanity
           ldd --version | head -n1
