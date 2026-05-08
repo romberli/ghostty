@@ -409,15 +409,21 @@ jobs:
           # freedesktop.org sometimes returns 418 to CI runners; retry with
           # multiple mirrors. The fd.o release tarball already includes
           # generated configure; the gitlab archive does not (we'd need to
-          # re-bootstrap it). Prefer fd.o with retries; only fall back to
-          # gitlab as a last resort.
-          UA='User-Agent: Mozilla/5.0 (X11; Linux x86_64) curl/7.64'
-          (curl -fL --retry 8 --retry-all-errors --retry-delay 5 -H "$UA" \
-            "https://www.freedesktop.org/software/fontconfig/release/fontconfig-${V_FONTCONFIG}.tar.xz" -o fc.txz) \
-          || (curl -fL --retry 5 --retry-all-errors --retry-delay 5 -H "$UA" \
-              "https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/${V_FONTCONFIG}/fontconfig-${V_FONTCONFIG}.tar.xz" -o fc.txz) \
-          || (curl -fL --retry 5 --retry-all-errors --retry-delay 5 -H "$UA" \
-              "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/${V_FONTCONFIG}/fontconfig-${V_FONTCONFIG}.tar.gz" -o fc.txz)
+          # re-bootstrap it). NOTE: debian:10's curl 7.64 has neither
+          # --retry-all-errors nor --retry-connrefused — keep flags minimal.
+          UA='Mozilla/5.0 (X11; Linux x86_64)'
+          download() {
+            for i in 1 2 3 4 5; do
+              if curl -fSL --retry 3 --retry-delay 5 -A "$UA" "$1" -o fc.txz; then
+                return 0
+              fi
+              echo "retry $i for $1"; sleep 5
+            done
+            return 1
+          }
+          download "https://www.freedesktop.org/software/fontconfig/release/fontconfig-${V_FONTCONFIG}.tar.xz" \
+          || download "https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/${V_FONTCONFIG}/fontconfig-${V_FONTCONFIG}.tar.xz" \
+          || download "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/${V_FONTCONFIG}/fontconfig-${V_FONTCONFIG}.tar.gz"
           # Auto-detect compression (gitlab gives .tar.gz, fd.o gives .tar.xz)
           if file fc.txz | grep -q 'XZ compressed'; then
             tar xJf fc.txz
