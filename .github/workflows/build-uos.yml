@@ -128,7 +128,10 @@ jobs:
             libonig-dev \
             libbz2-dev \
             gettext \
-            itstool
+            itstool \
+            xsltproc \
+            docbook-xsl \
+            docbook-xml
           rm -rf /var/lib/apt/lists/*
           # Sanity
           ldd --version | head -n1
