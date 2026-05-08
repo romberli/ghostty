@@ -698,6 +698,10 @@ jobs:
           tar xzf appstream.tgz
           cd appstream-${V_APPSTREAM}
           rm -f subprojects/*.wrap
+          # docs/meson.build unconditionally calls xsltproc against
+          # http://docbook.sourceforge.net/... and fails offline.
+          # We don't need man pages; neutralise the docs subdir.
+          : > docs/meson.build
           meson setup build \
             --prefix="${PREFIX}" \
             --libdir=lib \
