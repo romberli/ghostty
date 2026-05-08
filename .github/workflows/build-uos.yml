@@ -702,6 +702,23 @@ jobs:
           # http://docbook.sourceforge.net/... and fails offline.
           # We don't need man pages; neutralise the docs subdir.
           : > docs/meson.build
+          # tests/ runs the validator which (a) needs the metainfo file
+          # we generate next, and (b) hits the network for SPDX. Drop it.
+          : > tests/meson.build
+          # data/meson.build pipes catalog merging through buster's
+          # /usr/bin/itstool, which still imports the OS python2 libxml2
+          # bindings; those break against our freshly-built libxml2 2.12.
+          # We don't need translated metainfo or the cli validator-test
+          # at all; rewrite this subdir to just install the loose .its
+          # files appstream's runtime expects.
+          cat > data/meson.build <<'EOF'
+          install_data('its/metainfo.its',
+                       install_dir: join_paths(get_option('datadir'), 'gettext', 'its'))
+          install_data('its/metainfo.loc',
+                       install_dir: join_paths(get_option('datadir'), 'gettext', 'its'))
+          install_data('appstream.conf',
+                       install_dir: join_paths(get_option('datadir'), 'appstream'))
+          EOF
           meson setup build \
             --prefix="${PREFIX}" \
             --libdir=lib \
