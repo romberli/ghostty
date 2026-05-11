@@ -400,19 +400,11 @@ jobs:
           set -eux
           if [ -f "/opt/deps/lib/pkgconfig/freetype2.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/freetype2.pc present"; exit 0; fi
           cd /tmp
-          UA='Mozilla/5.0 (X11; Linux x86_64)'
-          download() {
-            for i in 1 2 3 4 5; do
-              if curl -fSL --retry 3 --retry-delay 5 -A "$UA" "$1" -o freetype.txz; then return 0; fi
-              echo "retry $i for $1"; sleep 5
-            done
-            return 1
-          }
-          # freetype GitHub releases use VER-X-Y-Z format (hyphens not dots)
-          FT_VER_TAG=$(echo "${V_FREETYPE}" | sed 's/\./-/g')
-          download "https://download.savannah.gnu.org/releases/freetype/freetype-${V_FREETYPE}.tar.xz" \
-          || download "https://github.com/freetype/freetype/releases/download/VER-${FT_VER_TAG}/freetype-${V_FREETYPE}.tar.xz"
-          tar xJf freetype.txz
+          # savannah.gnu.org is unreachable from GitHub runners. Use git clone.
+          rm -rf freetype-${V_FREETYPE}
+          git clone --depth=1 --branch="VER-${V_FREETYPE}" \
+            https://github.com/freetype/freetype.git \
+            freetype-${V_FREETYPE}
           cd freetype-${V_FREETYPE}
           # First build without harfbuzz (cyclic). We'll rebuild after harfbuzz.
           ./configure \
