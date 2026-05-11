@@ -409,6 +409,8 @@ jobs:
             https://github.com/freetype/freetype.git \
             freetype-${V_FREETYPE}
           cd freetype-${V_FREETYPE}
+          # Git clone doesn't have pre-generated configure, need to run autogen.sh
+          ./autogen.sh
           # First build without harfbuzz (cyclic). We'll rebuild after harfbuzz.
           ./configure \
             --prefix="${PREFIX}" \
