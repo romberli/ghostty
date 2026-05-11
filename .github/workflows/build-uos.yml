@@ -173,8 +173,7 @@ jobs:
             "meson==1.5.2" \
             "ninja==1.11.1.1" \
             "blueprint-compiler==${V_BLUEPRINT}" \
-            "jinja2" \
-            "pygobject"
+            "jinja2"
           ln -sf "${PY_PREFIX}/bin/python3" "${PY_PREFIX}/bin/python"
           # Fix shebang in blueprint-compiler to use our Python
           sed -i '1s|^#!.*|#!/opt/python/bin/python3|' "${PY_PREFIX}/bin/blueprint-compiler"
@@ -842,6 +841,14 @@ jobs:
           pkg-config --modversion gtk4-layer-shell-0
 
       # ----- end source builds -----
+
+      - name: Install PyGObject (needed by blueprint-compiler)
+        run: |
+          set -eux
+          # PyGObject needs cairo/glib already compiled, so install after deps
+          "${PY_PREFIX}/bin/pip3" install --no-cache-dir "pygobject"
+          # Verify blueprint-compiler works
+          blueprint-compiler --version
 
       - name: Show final dependency versions
         run: |
