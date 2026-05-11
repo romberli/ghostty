@@ -401,8 +401,10 @@ jobs:
           if [ -f "/opt/deps/lib/pkgconfig/freetype2.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/freetype2.pc present"; exit 0; fi
           cd /tmp
           # savannah.gnu.org is unreachable from GitHub runners. Use git clone.
+          # freetype git tags use VER-X-Y-Z format (all dots replaced by hyphens)
+          FT_TAG=$(echo "${V_FREETYPE}" | sed 's/\./-/g')
           rm -rf freetype-${V_FREETYPE}
-          git clone --depth=1 --branch="VER-${V_FREETYPE}" \
+          git clone --depth=1 --branch="VER-${FT_TAG}" \
             https://github.com/freetype/freetype.git \
             freetype-${V_FREETYPE}
           cd freetype-${V_FREETYPE}
