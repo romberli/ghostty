@@ -135,7 +135,12 @@ jobs:
             docbook-xsl \
             docbook-xml \
             gobject-introspection \
-            libgirepository1.0-dev
+            libgirepository1.0-dev \
+            gir1.2-gdkpixbuf-2.0 \
+            gir1.2-pango-1.0 \
+            gir1.2-harfbuzz-0.0 \
+            gir1.2-freetype2-2.0 \
+            gir1.2-graphene-1.0
           rm -rf /var/lib/apt/lists/*
           # Sanity
           ldd --version | head -n1
@@ -706,7 +711,7 @@ jobs:
             -Dtracker=disabled \
             -Dcolord=disabled \
             -Dvulkan=disabled \
-            -Dintrospection=enabled \
+            -Dintrospection=disabled \
             -Dbuild-demos=false \
             -Dbuild-tests=false \
             -Dbuild-testsuite=false \
