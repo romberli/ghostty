@@ -73,6 +73,7 @@ env:
   V_LIBADWAITA: "1.5.4"
   V_GTK4_LAYER_SHELL: "1.1.0"
   V_BLUEPRINT: "0.20.4"
+  V_GOBJECT_INTROSPECTION: "1.78.1"
 
 jobs:
   build:
@@ -306,6 +307,28 @@ jobs:
           ninja -C build -j"$(nproc)"
           ninja -C build install
           pkg-config --modversion glib-2.0
+
+      - name: Build gobject-introspection (for GTK4 GIR files)
+        run: |
+          set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/gobject-introspection-1.0.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/gobject-introspection-1.0.pc present"; exit 0; fi
+          cd /tmp
+          GI_VER=$(echo "${V_GOBJECT_INTROSPECTION}" | cut -d. -f1,2)
+          curl -fL "https://download.gnome.org/sources/gobject-introspection/${GI_VER}/gobject-introspection-${V_GOBJECT_INTROSPECTION}.tar.xz" -o gi.txz
+          tar xJf gi.txz
+          cd gobject-introspection-${V_GOBJECT_INTROSPECTION}
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=both \
+            --wrap-mode=nofallback \
+            -Dcairo=enabled \
+            -Dpython=disabled \
+            -Ddoctool=disabled
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion gobject-introspection-1.0
 
       - name: Build wayland (libwayland-client, server, scanner)
         run: |
@@ -713,7 +736,7 @@ jobs:
             -Dtracker=disabled \
             -Dcolord=disabled \
             -Dvulkan=disabled \
-            -Dintrospection=disabled \
+            -Dintrospection=enabled \
             -Dbuild-demos=false \
             -Dbuild-tests=false \
             -Dbuild-testsuite=false \
