@@ -429,36 +429,21 @@ jobs:
           set -eux
           if [ -f "/opt/deps/lib/pkgconfig/fontconfig.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/fontconfig.pc present"; exit 0; fi
           cd /tmp
-          # freedesktop.org sometimes returns 418 to CI runners; retry with
-          # multiple mirrors. The fd.o release tarball already includes
-          # generated configure; the gitlab archive does not (we'd need to
-          # re-bootstrap it). NOTE: debian:10's curl 7.64 has neither
-          # --retry-all-errors nor --retry-connrefused — keep flags minimal.
+          # freedesktop.org persistently returns 418 to GitHub runners; skip it.
+          # Use gitlab source archive directly and bootstrap autotools.
           UA='Mozilla/5.0 (X11; Linux x86_64)'
           download() {
-            for i in 1 2 3 4 5; do
-              if curl -fSL --retry 3 --retry-delay 5 -A "$UA" "$1" -o fc.txz; then
-                return 0
-              fi
-              echo "retry $i for $1"; sleep 5
+            for i in 1 2 3; do
+              if curl -fSL --retry 2 --retry-delay 3 -A "$UA" "$1" -o fc.tgz; then return 0; fi
+              sleep 3
             done
             return 1
           }
-          download "https://www.freedesktop.org/software/fontconfig/release/fontconfig-${V_FONTCONFIG}.tar.xz" \
-          || download "https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/${V_FONTCONFIG}/fontconfig-${V_FONTCONFIG}.tar.xz" \
-          || download "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/${V_FONTCONFIG}/fontconfig-${V_FONTCONFIG}.tar.gz"
-          # Auto-detect compression (gitlab gives .tar.gz, fd.o gives .tar.xz)
-          if file fc.txz | grep -q 'XZ compressed'; then
-            tar xJf fc.txz
-          else
-            tar xzf fc.txz
-          fi
+          download "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/${V_FONTCONFIG}/fontconfig-${V_FONTCONFIG}.tar.gz"
+          tar xzf fc.tgz
           cd fontconfig-${V_FONTCONFIG}
-          # If we ended up with the raw gitlab tree (no configure script),
-          # bootstrap autotools first. The fd.o release tarball ships configure.
-          if [ ! -x ./configure ]; then
-            NOCONFIGURE=1 ./autogen.sh
-          fi
+          # Bootstrap autotools (this archive lacks pre-generated configure)
+          NOCONFIGURE=1 ./autogen.sh
           # Use autotools path: avoids meson asking for a Sphinx etc.
           ./configure \
             --prefix="${PREFIX}" \
