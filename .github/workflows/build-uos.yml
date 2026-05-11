@@ -830,7 +830,7 @@ jobs:
             -Dtests=false \
             -Dexamples=false \
             -Ddocs=false \
-            -Dintrospection=disabled \
+            -Dintrospection=false \
             -Dvapi=false
           ninja -C build -j"$(nproc)"
           ninja -C build install
