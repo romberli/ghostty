@@ -622,7 +622,7 @@ jobs:
             --buildtype=release \
             --default-library=both \
             --wrap-mode=nofallback \
-            -Dintrospection=disabled \
+            -Dintrospection=enabled \
             -Dgtk_doc=false \
             -Dxft=disabled \
             -Dcairo=enabled \
