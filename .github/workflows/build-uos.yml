@@ -364,8 +364,22 @@ jobs:
           set -eux
           if [ -f "/opt/deps/lib/pkgconfig/pixman-1.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/pixman-1.pc present"; exit 0; fi
           cd /tmp
-          curl -fL "https://cairographics.org/releases/pixman-${V_PIXMAN}.tar.gz" -o pixman.tgz
+          UA='Mozilla/5.0 (X11; Linux x86_64)'
+          download() {
+            for i in 1 2 3 4 5; do
+              if curl -fSL --retry 3 --retry-delay 5 -A "$UA" "$1" -o pixman.tgz; then return 0; fi
+              echo "retry $i for $1"; sleep 5
+            done
+            return 1
+          }
+          download "https://cairographics.org/releases/pixman-${V_PIXMAN}.tar.gz" \
+          || download "https://gitlab.freedesktop.org/pixman/pixman/-/archive/pixman-${V_PIXMAN}/pixman-pixman-${V_PIXMAN}.tar.gz" \
+          || download "https://www.cairographics.org/releases/pixman-${V_PIXMAN}.tar.gz"
           tar xzf pixman.tgz
+          # If we ended up with the gitlab archive, the dir is named differently
+          if [ -d "pixman-pixman-${V_PIXMAN}" ] && [ ! -d "pixman-${V_PIXMAN}" ]; then
+            mv "pixman-pixman-${V_PIXMAN}" "pixman-${V_PIXMAN}"
+          fi
           cd pixman-${V_PIXMAN}
           meson setup build \
             --prefix="${PREFIX}" \
@@ -385,7 +399,16 @@ jobs:
           set -eux
           if [ -f "/opt/deps/lib/pkgconfig/freetype2.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/freetype2.pc present"; exit 0; fi
           cd /tmp
-          curl -fL "https://download.savannah.gnu.org/releases/freetype/freetype-${V_FREETYPE}.tar.xz" -o freetype.txz
+          UA='Mozilla/5.0 (X11; Linux x86_64)'
+          download() {
+            for i in 1 2 3 4 5; do
+              if curl -fSL --retry 3 --retry-delay 5 -A "$UA" "$1" -o freetype.txz; then return 0; fi
+              echo "retry $i for $1"; sleep 5
+            done
+            return 1
+          }
+          download "https://download.savannah.gnu.org/releases/freetype/freetype-${V_FREETYPE}.tar.xz" \
+          || download "https://github.com/freetype/freetype/releases/download/VER-${V_FREETYPE}/freetype-${V_FREETYPE}.tar.xz"
           tar xJf freetype.txz
           cd freetype-${V_FREETYPE}
           # First build without harfbuzz (cyclic). We'll rebuild after harfbuzz.
@@ -506,8 +529,26 @@ jobs:
           set -eux
           if [ -f "/opt/deps/lib/pkgconfig/cairo-ft.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/cairo-ft.pc present"; exit 0; fi
           cd /tmp
-          curl -fL "https://cairographics.org/releases/cairo-${V_CAIRO}.tar.xz" -o cairo.txz
-          tar xJf cairo.txz
+          UA='Mozilla/5.0 (X11; Linux x86_64)'
+          download() {
+            for i in 1 2 3 4 5; do
+              if curl -fSL --retry 3 --retry-delay 5 -A "$UA" "$1" -o cairo.txz; then return 0; fi
+              echo "retry $i for $1"; sleep 5
+            done
+            return 1
+          }
+          download "https://cairographics.org/releases/cairo-${V_CAIRO}.tar.xz" \
+          || download "https://gitlab.freedesktop.org/cairo/cairo/-/archive/${V_CAIRO}/cairo-${V_CAIRO}.tar.gz"
+          # Auto-detect compression
+          if file cairo.txz | grep -q 'XZ compressed'; then
+            tar xJf cairo.txz
+          else
+            tar xzf cairo.txz
+          fi
+          # Gitlab archive has different dir naming
+          if [ -d "cairo-${V_CAIRO}" ] && [ ! -d "cairo-${V_CAIRO}" ]; then
+            mv "cairo-${V_CAIRO}" "cairo-${V_CAIRO}" 2>/dev/null || true
+          fi
           cd cairo-${V_CAIRO}
           rm -f subprojects/*.wrap
           meson setup build \
