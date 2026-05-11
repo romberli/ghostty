@@ -132,7 +132,9 @@ jobs:
             itstool \
             xsltproc \
             docbook-xsl \
-            docbook-xml
+            docbook-xml \
+            gobject-introspection \
+            libgirepository1.0-dev
           rm -rf /var/lib/apt/lists/*
           # Sanity
           ldd --version | head -n1
