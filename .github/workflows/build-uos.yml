@@ -128,6 +128,7 @@ jobs:
             libonig-dev \
             libbz2-dev \
             gettext \
+            autopoint \
             itstool \
             xsltproc \
             docbook-xsl \
