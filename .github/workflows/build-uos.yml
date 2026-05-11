@@ -175,6 +175,8 @@ jobs:
             "blueprint-compiler==${V_BLUEPRINT}" \
             "jinja2"
           ln -sf "${PY_PREFIX}/bin/python3" "${PY_PREFIX}/bin/python"
+          # Fix shebang in blueprint-compiler to use our Python
+          sed -i '1s|^#!.*|#!/opt/python/bin/python3|' "${PY_PREFIX}/bin/blueprint-compiler"
 
       - name: Make standalone Python and prefix tools visible
         run: |
