@@ -61,7 +61,7 @@ env:
   V_XKBCOMMON: "1.6.0"
   V_PIXMAN: "0.42.2"
   V_FREETYPE: "2.13.2"
-  V_FONTCONFIG: "2.15.0"
+  V_FONTCONFIG: "2.14.2"
   V_HARFBUZZ: "8.5.0"
   V_CAIRO: "1.18.0"
   V_PANGO: "1.52.2"
