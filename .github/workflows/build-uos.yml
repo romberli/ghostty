@@ -706,7 +706,7 @@ jobs:
             -Dtracker=disabled \
             -Dcolord=disabled \
             -Dvulkan=disabled \
-            -Dintrospection=true \
+            -Dintrospection=enabled \
             -Dbuild-demos=false \
             -Dbuild-tests=false \
             -Dbuild-testsuite=false \
