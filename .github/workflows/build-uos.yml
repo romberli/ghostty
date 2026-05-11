@@ -404,7 +404,8 @@ jobs:
           # freetype git tags use VER-X-Y-Z format (all dots replaced by hyphens)
           FT_TAG=$(echo "${V_FREETYPE}" | sed 's/\./-/g')
           rm -rf freetype-${V_FREETYPE}
-          git clone --depth=1 --branch="VER-${FT_TAG}" \
+          # Need --recursive for subprojects/dlg submodule
+          git clone --depth=1 --branch="VER-${FT_TAG}" --recursive \
             https://github.com/freetype/freetype.git \
             freetype-${V_FREETYPE}
           cd freetype-${V_FREETYPE}
