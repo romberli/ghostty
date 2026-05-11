@@ -565,26 +565,6 @@ jobs:
           pkg-config --modversion cairo
           pkg-config --modversion cairo-ft
 
-      - name: Build gobject-introspection (for GTK4 GIR files)
-        run: |
-          set -eux
-          if [ -f "/opt/deps/lib/pkgconfig/gobject-introspection-1.0.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/gobject-introspection-1.0.pc present"; exit 0; fi
-          cd /tmp
-          GI_VER=$(echo "${V_GOBJECT_INTROSPECTION}" | cut -d. -f1,2)
-          curl -fL "https://download.gnome.org/sources/gobject-introspection/${GI_VER}/gobject-introspection-${V_GOBJECT_INTROSPECTION}.tar.xz" -o gi.txz
-          tar xJf gi.txz
-          cd gobject-introspection-${V_GOBJECT_INTROSPECTION}
-          meson setup build \
-            --prefix="${PREFIX}" \
-            --libdir=lib \
-            --buildtype=release \
-            --default-library=both \
-            --wrap-mode=nofallback \
-            -Dcairo=enabled
-          ninja -C build -j"$(nproc)"
-          ninja -C build install
-          pkg-config --modversion gobject-introspection-1.0
-
       - name: Build fribidi (debian:10 has 1.0.5, pango needs >= 1.0.6)
         run: |
           set -eux
@@ -622,7 +602,7 @@ jobs:
             --buildtype=release \
             --default-library=both \
             --wrap-mode=nofallback \
-            -Dintrospection=enabled \
+            -Dintrospection=disabled \
             -Dgtk_doc=false \
             -Dxft=disabled \
             -Dcairo=enabled \
@@ -649,7 +629,7 @@ jobs:
             --buildtype=release \
             --default-library=both \
             --wrap-mode=nofallback \
-            -Dintrospection=enabled \
+            -Dintrospection=disabled \
             -Dinstalled_tests=false \
             -Dtests=false \
             -Dgio_sniffing=false \
@@ -734,7 +714,7 @@ jobs:
             -Dtracker=disabled \
             -Dcolord=disabled \
             -Dvulkan=disabled \
-            -Dintrospection=enabled \
+            -Dintrospection=disabled \
             -Dbuild-demos=false \
             -Dbuild-tests=false \
             -Dbuild-testsuite=false \
