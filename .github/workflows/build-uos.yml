@@ -429,20 +429,14 @@ jobs:
           set -eux
           if [ -f "/opt/deps/lib/pkgconfig/fontconfig.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/fontconfig.pc present"; exit 0; fi
           cd /tmp
-          # freedesktop.org persistently returns 418 to GitHub runners; skip it.
-          # Use gitlab source archive directly and bootstrap autotools.
-          UA='Mozilla/5.0 (X11; Linux x86_64)'
-          download() {
-            for i in 1 2 3; do
-              if curl -fSL --retry 2 --retry-delay 3 -A "$UA" "$1" -o fc.tgz; then return 0; fi
-              sleep 3
-            done
-            return 1
-          }
-          download "https://gitlab.freedesktop.org/fontconfig/fontconfig/-/archive/${V_FONTCONFIG}/fontconfig-${V_FONTCONFIG}.tar.gz"
-          tar xzf fc.tgz
+          # freedesktop.org and gitlab archive URLs both return HTML to GitHub runners.
+          # Use git clone with shallow depth to get the specific tag.
+          rm -rf fontconfig-${V_FONTCONFIG}
+          git clone --depth=1 --branch="${V_FONTCONFIG}" \
+            https://gitlab.freedesktop.org/fontconfig/fontconfig.git \
+            fontconfig-${V_FONTCONFIG}
           cd fontconfig-${V_FONTCONFIG}
-          # Bootstrap autotools (this archive lacks pre-generated configure)
+          # Bootstrap autotools
           NOCONFIGURE=1 ./autogen.sh
           # Use autotools path: avoids meson asking for a Sphinx etc.
           ./configure \
