@@ -408,8 +408,10 @@ jobs:
             done
             return 1
           }
+          # freetype GitHub releases use VER-X-Y-Z format (hyphens not dots)
+          FT_VER_TAG=$(echo "${V_FREETYPE}" | sed 's/\./-/g')
           download "https://download.savannah.gnu.org/releases/freetype/freetype-${V_FREETYPE}.tar.xz" \
-          || download "https://github.com/freetype/freetype/releases/download/VER-${V_FREETYPE}/freetype-${V_FREETYPE}.tar.xz"
+          || download "https://github.com/freetype/freetype/releases/download/VER-${FT_VER_TAG}/freetype-${V_FREETYPE}.tar.xz"
           tar xJf freetype.txz
           cd freetype-${V_FREETYPE}
           # First build without harfbuzz (cyclic). We'll rebuild after harfbuzz.
