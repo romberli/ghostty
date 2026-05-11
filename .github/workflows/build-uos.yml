@@ -323,9 +323,7 @@ jobs:
             --buildtype=release \
             --default-library=both \
             --wrap-mode=nofallback \
-            -Dcairo=enabled \
-            -Dpython=disabled \
-            -Ddoctool=disabled
+            -Dcairo=enabled
           ninja -C build -j"$(nproc)"
           ninja -C build install
           pkg-config --modversion gobject-introspection-1.0
