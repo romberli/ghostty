@@ -649,7 +649,7 @@ jobs:
             --buildtype=release \
             --default-library=both \
             --wrap-mode=nofallback \
-            -Dintrospection=disabled \
+            -Dintrospection=enabled \
             -Dinstalled_tests=false \
             -Dtests=false \
             -Dgio_sniffing=false \
