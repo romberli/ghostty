@@ -115,6 +115,7 @@ jobs:
             gperf \
             sed gawk \
             python3 \
+            clang \
             libexpat1-dev \
             libpng-dev \
             libjpeg-dev \
