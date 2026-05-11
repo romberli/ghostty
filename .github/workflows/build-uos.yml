@@ -821,6 +821,9 @@ jobs:
           curl -fL "https://github.com/wmww/gtk4-layer-shell/archive/refs/tags/v${V_GTK4_LAYER_SHELL}.tar.gz" -o lshell.tgz
           tar xzf lshell.tgz
           cd gtk4-layer-shell-${V_GTK4_LAYER_SHELL}
+          # gtk4-layer-shell's libwayland-shim.c uses dlsym() but doesn't link libdl.
+          # Inject -ldl into the meson build via LDFLAGS.
+          export LDFLAGS="-ldl"
           meson setup build \
             --prefix="${PREFIX}" \
             --libdir=lib \
