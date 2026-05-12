@@ -591,6 +591,10 @@ jobs:
         run: |
           set -eux
           if [ -f "/opt/deps/lib/pkgconfig/pangocairo.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/pangocairo.pc present"; exit 0; fi
+          # Copy harfbuzz GIR files to system path so meson can find them
+          if [ -d "${PREFIX}/share/gir-1.0" ]; then
+            cp -r "${PREFIX}/share/gir-1.0"/*.gir /usr/share/gir-1.0/ 2>/dev/null || true
+          fi
           cd /tmp
           MAJORMIN=$(echo "${V_PANGO}" | cut -d. -f1,2)
           curl -fL "https://download.gnome.org/sources/pango/${MAJORMIN}/pango-${V_PANGO}.tar.xz" -o pango.txz
@@ -619,6 +623,10 @@ jobs:
         run: |
           set -eux
           if [ -f "/opt/deps/lib/pkgconfig/gdk-pixbuf-2.0.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/gdk-pixbuf-2.0.pc present"; exit 0; fi
+          # Copy previously built GIR files to system path
+          if [ -d "${PREFIX}/share/gir-1.0" ]; then
+            cp -r "${PREFIX}/share/gir-1.0"/*.gir /usr/share/gir-1.0/ 2>/dev/null || true
+          fi
           cd /tmp
           MAJORMIN=$(echo "${V_GDK_PIXBUF}" | cut -d. -f1,2)
           curl -fL "https://download.gnome.org/sources/gdk-pixbuf/${MAJORMIN}/gdk-pixbuf-${V_GDK_PIXBUF}.tar.xz" -o gdk.txz
@@ -670,6 +678,10 @@ jobs:
         run: |
           set -eux
           if [ -f "/opt/deps/lib/pkgconfig/graphene-1.0.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/graphene-1.0.pc present"; exit 0; fi
+          # Copy previously built GIR files to system path
+          if [ -d "${PREFIX}/share/gir-1.0" ]; then
+            cp -r "${PREFIX}/share/gir-1.0"/*.gir /usr/share/gir-1.0/ 2>/dev/null || true
+          fi
           cd /tmp
           curl -fL "https://github.com/ebassi/graphene/archive/refs/tags/${V_GRAPHENE}.tar.gz" -o graphene.tgz
           tar xzf graphene.tgz
@@ -691,6 +703,10 @@ jobs:
         run: |
           set -eux
           if [ -f "/opt/deps/lib/pkgconfig/gtk4.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/gtk4.pc present"; exit 0; fi
+          # Copy previously built GIR files to system path
+          if [ -d "${PREFIX}/share/gir-1.0" ]; then
+            cp -r "${PREFIX}/share/gir-1.0"/*.gir /usr/share/gir-1.0/ 2>/dev/null || true
+          fi
           cd /tmp
           MAJORMIN=$(echo "${V_GTK4}" | cut -d. -f1,2)
           curl -fL "https://download.gnome.org/sources/gtk/${MAJORMIN}/gtk-${V_GTK4}.tar.xz" -o gtk.txz
@@ -805,6 +821,10 @@ jobs:
         run: |
           set -eux
           if [ -f "/opt/deps/lib/pkgconfig/libadwaita-1.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/libadwaita-1.pc present"; exit 0; fi
+          # Copy previously built GIR files to system path
+          if [ -d "${PREFIX}/share/gir-1.0" ]; then
+            cp -r "${PREFIX}/share/gir-1.0"/*.gir /usr/share/gir-1.0/ 2>/dev/null || true
+          fi
           cd /tmp
           MAJORMIN=$(echo "${V_LIBADWAITA}" | cut -d. -f1,2)
           curl -fL "https://download.gnome.org/sources/libadwaita/${MAJORMIN}/libadwaita-${V_LIBADWAITA}.tar.xz" -o adw.txz
