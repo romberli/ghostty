@@ -893,8 +893,6 @@ pub fn gtkNgDistResources(
             }),
         });
         blueprint_exe.linkLibC();
-        blueprint_exe.linkSystemLibrary2("gtk4", dynamic_link_opts);
-        blueprint_exe.linkSystemLibrary2("libadwaita-1", dynamic_link_opts);
         
         // Set RPATH for gtk_blueprint_compiler to find libraries at runtime
         // This is needed because the executable is run during build process

@@ -7,10 +7,6 @@
 
 const std = @import("std");
 
-pub const c = @cImport({
-    @cInclude("adwaita.h");
-});
-
 pub const blueprint_compiler_help =
     \\
     \\When building from a Git checkout, Ghostty requires
@@ -19,16 +15,23 @@ pub const blueprint_compiler_help =
     \\is available on your PATH, and then retry building Ghostty.
     \\See `HACKING.md` for more details.
     \\
-    \\This message should *not* appear for normal users, who
+    \\This message should *not` appear for normal users, who
     \\should build Ghostty from official release tarballs instead.
     \\Please consult https://ghostty.org/docs/install/build for
     \\more information on the recommended build instructions.
 ;
 
+// Hardcoded libadwaita version - this should match the version
+// built in build-uos.yml workflow
 const adwaita_version = std.SemanticVersion{
-    .major = c.ADW_MAJOR_VERSION,
-    .minor = c.ADW_MINOR_VERSION,
-    .patch = c.ADW_MICRO_VERSION,
+    .major = 1,
+    .minor = 5,
+    .patch = 4,
+};
+const required_blueprint_version = std.SemanticVersion{
+    .major = 0,
+    .minor = 16,
+    .patch = 0,
 };
 const required_blueprint_version = std.SemanticVersion{
     .major = 0,
