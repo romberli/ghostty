@@ -160,9 +160,9 @@ jobs:
           # We key on a manual version rather than yml hash so cache survives
           # iterative workflow tweaks. Bump the v* prefix to force a clean
           # rebuild from scratch.
-          key: uos-deps-v7-${{ github.run_id }}
+          key: uos-deps-v8-${{ github.run_id }}
           restore-keys: |
-            uos-deps-v7-
+            uos-deps-v8-
 
       - name: Install standalone Python 3.12 (debian:10's 3.7 is too old)
         run: |
@@ -481,7 +481,7 @@ jobs:
             --wrap-mode=nofallback \
             -Dtests=disabled \
             -Ddocs=disabled \
-            -Dintrospection=disabled \
+            -Dintrospection=enabled \
             -Dicu=disabled \
             -Dgraphite2=disabled \
             -Dchafa=disabled \
@@ -602,7 +602,7 @@ jobs:
             --buildtype=release \
             --default-library=both \
             --wrap-mode=nofallback \
-            -Dintrospection=disabled \
+            -Dintrospection=enabled \
             -Dgtk_doc=false \
             -Dxft=disabled \
             -Dcairo=enabled \
@@ -629,7 +629,7 @@ jobs:
             --buildtype=release \
             --default-library=both \
             --wrap-mode=nofallback \
-            -Dintrospection=disabled \
+            -Dintrospection=enabled \
             -Dinstalled_tests=false \
             -Dtests=false \
             -Dgio_sniffing=false \
@@ -680,7 +680,7 @@ jobs:
             --default-library=both \
             --wrap-mode=nofallback \
             -Dtests=false \
-            -Dintrospection=disabled \
+            -Dintrospection=enabled \
             -Dgobject_types=true
           ninja -C build -j"$(nproc)"
           ninja -C build install
