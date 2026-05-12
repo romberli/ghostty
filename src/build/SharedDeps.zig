@@ -895,6 +895,13 @@ pub fn gtkNgDistResources(
         blueprint_exe.linkLibC();
         blueprint_exe.linkSystemLibrary2("gtk4", dynamic_link_opts);
         blueprint_exe.linkSystemLibrary2("libadwaita-1", dynamic_link_opts);
+        
+        // Set RPATH for gtk_blueprint_compiler to find libraries at runtime
+        // This is needed because the executable is run during build process
+        // and needs to find gtk4/libadwaita in /opt/deps/lib
+        if (b.graph.host.result.os.tag == .linux) {
+            blueprint_exe.addRPath(b.path("/opt/deps/lib"));
+        }
 
         for (gresource.blueprints) |bp| {
             const blueprint_run = b.addRunArtifact(blueprint_exe);
