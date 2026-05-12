@@ -33,11 +33,6 @@ const required_blueprint_version = std.SemanticVersion{
     .minor = 16,
     .patch = 0,
 };
-const required_blueprint_version = std.SemanticVersion{
-    .major = 0,
-    .minor = 16,
-    .patch = 0,
-};
 
 pub fn main() !void {
     var debug_allocator: std.heap.DebugAllocator(.{}) = .init;
