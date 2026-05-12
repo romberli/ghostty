@@ -950,6 +950,7 @@ jobs:
           echo "OK: GLIBC_${MAX_USED} <= GLIBC_${MAX_GLIBC}"
 
       - name: Bundle dynamic libraries (recursive)
+        shell: bash
         run: |
           set -eux
           OUT=dist/ghostty-uos-amd64
