@@ -487,7 +487,7 @@ jobs:
             -Dchafa=disabled \
             -Dfreetype=enabled \
             -Dglib=enabled \
-            -Dgobject=disabled \
+            -Dgobject=enabled \
             -Dcairo=disabled \
             -Dutilities=disabled
           ninja -C build -j"$(nproc)"
