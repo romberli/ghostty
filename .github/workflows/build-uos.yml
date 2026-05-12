@@ -1016,6 +1016,7 @@ jobs:
           done
 
       - name: Verify final bundle (no missing deps, glibc scan)
+        shell: bash
         run: |
           set -euo pipefail
           OUT=dist/ghostty-uos-amd64
