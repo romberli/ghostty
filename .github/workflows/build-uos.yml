@@ -714,7 +714,7 @@ jobs:
             -Dtracker=disabled \
             -Dcolord=disabled \
             -Dvulkan=disabled \
-            -Dintrospection=disabled \
+            -Dintrospection=enabled \
             -Dbuild-demos=false \
             -Dbuild-tests=false \
             -Dbuild-testsuite=false \
@@ -819,7 +819,7 @@ jobs:
             -Dtests=false \
             -Dexamples=false \
             -Dvapi=false \
-            -Dintrospection=disabled \
+            -Dintrospection=enabled \
             -Dgtk_doc=false
           ninja -C build -j"$(nproc)"
           ninja -C build install
