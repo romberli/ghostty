@@ -901,6 +901,10 @@ jobs:
           # rather than its own bundled fontconfig/freetype/harfbuzz/png.
           # We prefer linking the freshly-built stack so the run-time .so
           # set we collect later matches.
+          # Set GI_TYPELIB_PATH for blueprint-compiler to find GTK4/libadwaita typelibs
+          export GI_TYPELIB_PATH="${PREFIX}/lib/girepository-1.0:/usr/lib/girepository-1.0"
+          # Also ensure LD_LIBRARY_PATH includes our built libraries for g-ir-scanner subprocess
+          export LD_LIBRARY_PATH="${PREFIX}/lib:${LD_LIBRARY_PATH}"
           zig build \
             -Doptimize=ReleaseSafe \
             -Dtarget="${ZIG_TARGET}" \
