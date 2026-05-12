@@ -900,7 +900,8 @@ pub fn gtkNgDistResources(
         // This is needed because the executable is run during build process
         // and needs to find gtk4/libadwaita in /opt/deps/lib
         if (b.graph.host.result.os.tag == .linux) {
-            blueprint_exe.addRPath(b.path("/opt/deps/lib"));
+            const rpath_lazy = std.Build.LazyPath.cwd_relative.add(b, "/opt/deps/lib");
+            blueprint_exe.addRPath(rpath_lazy);
         }
 
         for (gresource.blueprints) |bp| {
