@@ -160,9 +160,9 @@ jobs:
           # We key on a manual version rather than yml hash so cache survives
           # iterative workflow tweaks. Bump the v* prefix to force a clean
           # rebuild from scratch.
-          key: uos-deps-v8-${{ github.run_id }}
+          key: uos-deps-v9-${{ github.run_id }}
           restore-keys: |
-            uos-deps-v8-
+            uos-deps-v9-
 
       - name: Install standalone Python 3.12 (debian:10's 3.7 is too old)
         run: |
@@ -454,6 +454,7 @@ jobs:
           # Use autotools path: avoids meson asking for a Sphinx etc.
           ./configure \
             --prefix="${PREFIX}" \
+            --sysconfdir=/etc \
             --enable-shared \
             --enable-static \
             --disable-docs \
