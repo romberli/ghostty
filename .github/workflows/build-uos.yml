@@ -165,9 +165,10 @@ jobs:
           # We key on a manual version rather than yml hash so cache survives
           # iterative workflow tweaks. Bump the v* prefix to force a clean
           # rebuild from scratch.
-          key: uos-deps-v10-${{ github.run_id }}
+          # Bumped to v11 to force rebuild with X11 support enabled
+          key: uos-deps-v11-${{ github.run_id }}
           restore-keys: |
-            uos-deps-v10-
+            uos-deps-v11-
 
       - name: Install standalone Python 3.12 (debian:10's 3.7 is too old)
         run: |
