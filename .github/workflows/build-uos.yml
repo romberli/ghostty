@@ -141,7 +141,12 @@ jobs:
             gir1.2-pango-1.0 \
             gir1.2-harfbuzz-0.0 \
             gir1.2-freetype2-2.0 \
-            gir1.2-graphene-1.0
+            gir1.2-graphene-1.0 \
+            libx11-dev \
+            libxrender-dev \
+            libxext-dev \
+            libxcb1-dev \
+            libxcb-render0-dev
           rm -rf /var/lib/apt/lists/*
           # Sanity
           ldd --version | head -n1
@@ -350,7 +355,7 @@ jobs:
           ninja -C build install
           pkg-config --modversion wayland-protocols
 
-      - name: Build libxkbcommon (no X11)
+      - name: Build libxkbcommon (X11 + Wayland)
         run: |
           set -eux
           if [ -f "/opt/deps/lib/pkgconfig/xkbcommon.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/xkbcommon.pc present"; exit 0; fi
@@ -365,13 +370,14 @@ jobs:
             --default-library=both \
             --wrap-mode=nofallback \
             -Denable-wayland=true \
-            -Denable-x11=false \
+            -Denable-x11=true \
             -Denable-docs=false \
             -Denable-xkbregistry=false \
             -Denable-tools=false
           ninja -C build -j"$(nproc)"
           ninja -C build install
           pkg-config --modversion xkbcommon
+          pkg-config --modversion xkbcommon-x11
 
       - name: Build pixman
         run: |
@@ -517,7 +523,7 @@ jobs:
           pkg-config --modversion freetype2
           touch /opt/deps/.freetype-with-harfbuzz
 
-      - name: Build cairo (wayland-only, no xft, no x11, no win/quartz)
+      - name: Build cairo (x11 + wayland, no xft)
         run: |
           set -eux
           if [ -f "/opt/deps/lib/pkgconfig/cairo-ft.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/cairo-ft.pc present"; exit 0; fi
@@ -551,8 +557,8 @@ jobs:
             --default-library=both \
             --wrap-mode=nofallback \
             -Dtests=disabled \
-            -Dxlib=disabled \
-            -Dxcb=disabled \
+            -Dxlib=enabled \
+            -Dxcb=enabled \
             -Dquartz=disabled \
             -Ddwrite=disabled \
             -Dspectre=disabled \
@@ -566,6 +572,7 @@ jobs:
           ninja -C build install
           pkg-config --modversion cairo
           pkg-config --modversion cairo-ft
+          pkg-config --modversion cairo-xlib
 
       - name: Build fribidi (debian:10 has 1.0.5, pango needs >= 1.0.6)
         run: |
@@ -653,7 +660,7 @@ jobs:
           ninja -C build install
           pkg-config --modversion gdk-pixbuf-2.0
 
-      - name: Build libepoxy (egl, wayland; no glx/x11)
+      - name: Build libepoxy (GLX + EGL, X11 + Wayland)
         run: |
           set -eux
           if [ -f "/opt/deps/lib/pkgconfig/epoxy.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/epoxy.pc present"; exit 0; fi
@@ -668,9 +675,9 @@ jobs:
             --default-library=both \
             --wrap-mode=nofallback \
             -Dtests=false \
-            -Dglx=no \
+            -Dglx=yes \
             -Degl=yes \
-            -Dx11=false
+            -Dx11=true
           ninja -C build -j"$(nproc)"
           ninja -C build install
           pkg-config --modversion epoxy
@@ -700,7 +707,7 @@ jobs:
           ninja -C build install
           pkg-config --modversion graphene-1.0
 
-      - name: Build GTK4 (wayland-only, no x11/vulkan/cups/colord/sysprof)
+      - name: Build GTK4 (X11 + Wayland, no vulkan/cups/colord/sysprof)
         run: |
           set -eux
           if [ -f "/opt/deps/lib/pkgconfig/gtk4.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/gtk4.pc present"; exit 0; fi
@@ -721,7 +728,7 @@ jobs:
             --default-library=both \
             --wrap-mode=nofallback \
             -Dwayland-backend=true \
-            -Dx11-backend=false \
+            -Dx11-backend=true \
             -Dwin32-backend=false \
             -Dmacos-backend=false \
             -Dbroadway-backend=false \
@@ -911,7 +918,7 @@ jobs:
             -Dtarget="${ZIG_TARGET}" \
             -Dcpu=x86_64_v2 \
             -Dapp-runtime=gtk \
-            -Dgtk-x11=false \
+            -Dgtk-x11=true \
             -Dgtk-wayland=true \
             -Dpie=true \
             --search-prefix "${PREFIX}"
@@ -1048,12 +1055,49 @@ jobs:
           mv "$OUT/ghostty" "$OUT/ghostty.bin"
           printf '%s\n' '#!/bin/bash' \
             '# Self-contained Ghostty launcher for UOS20' \
+            '# Auto-detect installation directory' \
             'APPDIR="${APPDIR:-$(dirname "$(readlink -f "$0")")}"' \
+            '' \
+            '# Set up bundled resources' \
             'export XDG_DATA_HOME="$APPDIR/share"' \
             'export FONTCONFIG_PATH="$APPDIR/etc/fonts"' \
             'export FONTCONFIG_FILE=fonts.conf' \
             'export LD_LIBRARY_PATH="$APPDIR/lib:$LD_LIBRARY_PATH"' \
             'export GI_TYPELIB_PATH="$APPDIR/lib/girepository-1.0:/usr/lib/girepository-1.0"' \
+            '' \
+            '# Auto-detect display backend (X11 or Wayland)' \
+            '# UOS20 uses X11 by default, but Wayland is also supported' \
+            'if [ -n "$WAYLAND_DISPLAY" ] && [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then' \
+            '  # Wayland session detected' \
+            '  export GDK_BACKEND=wayland' \
+            'elif [ -n "$DISPLAY" ]; then' \
+            '  # X11 session detected' \
+            '  export GDK_BACKEND=x11' \
+            'else' \
+            '  # No display detected, try Wayland first then fallback to X11' \
+            '  if [ -S "$XDG_RUNTIME_DIR/wayland-0" ]; then' \
+            '    export GDK_BACKEND=wayland' \
+            '    export WAYLAND_DISPLAY=wayland-0' \
+            '  elif [ -e /tmp/.X11-unix/X0 ]; then' \
+            '    export GDK_BACKEND=x11' \
+            '    export DISPLAY=:0' \
+            '  else' \
+            '    echo "Error: No display server detected"' \
+            '    echo "Please run Ghostty in a graphical session (X11 or Wayland)"' \
+            '    exit 1' \
+            '  fi' \
+            'fi' \
+            '' \
+            '# Ensure XDG_RUNTIME_DIR exists for Wayland' \
+            'if [ "$GDK_BACKEND" = "wayland" ]; then' \
+            '  export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"' \
+            '  if [ ! -d "$XDG_RUNTIME_DIR" ]; then' \
+            '    export XDG_RUNTIME_DIR="/tmp/runtime-$(id -u)"' \
+            '    mkdir -p "$XDG_RUNTIME_DIR"' \
+            '    chmod 700 "$XDG_RUNTIME_DIR"' \
+            '  fi' \
+            'fi' \
+            '' \
             'exec "$APPDIR/ghostty.bin" "$@"' > "$OUT/AppRun"
           chmod +x "$OUT/AppRun"
           ln -sf AppRun "$OUT/ghostty"
