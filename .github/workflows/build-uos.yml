@@ -146,7 +146,13 @@ jobs:
             libxrender-dev \
             libxext-dev \
             libxcb1-dev \
-            libxcb-render0-dev
+            libxcb-render0-dev \
+            libxcb-xkb-dev \
+            libxcb-icccm4-dev \
+            libxcb-image0-dev \
+            libxcb-keysyms1-dev \
+            libxcb-util0-dev \
+            libxcb-shm0-dev
           rm -rf /var/lib/apt/lists/*
           # Sanity
           ldd --version | head -n1
