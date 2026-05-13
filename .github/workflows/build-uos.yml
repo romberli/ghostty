@@ -1009,11 +1009,11 @@ jobs:
 
           # JetBrains Mono (version 2.304)
           curl -fL "https://github.com/JetBrains/JetBrainsMono/releases/download/v2.304/JetBrainsMono-2.304.zip" -o /tmp/jbmono.zip
-          unzip -j /tmp/jbmono.zip "JetBrainsMono-2.304/fonts/ttf/JetBrainsMono-Regular.ttf" "JetBrainsMono-2.304/fonts/ttf/JetBrainsMono-Bold.ttf" "JetBrainsMono-2.304/fonts/ttf/JetBrainsMono-Italic.ttf" "JetBrainsMono-2.304/fonts/ttf/JetBrainsMono-BoldItalic.ttf" -d "$OUT/share/fonts/"
+          unzip -j /tmp/jbmono.zip "fonts/ttf/JetBrainsMono-Regular.ttf" "fonts/ttf/JetBrainsMono-Bold.ttf" "fonts/ttf/JetBrainsMono-Italic.ttf" "fonts/ttf/JetBrainsMono-BoldItalic.ttf" -d "$OUT/share/fonts/"
 
-          # Source Code Pro (version 2.042)
-          curl -fL "https://github.com/adobe-fonts/source-code-pro/releases/download/2.042R/SourceCodePro-2.042.zip" -o /tmp/scpro.zip
-          unzip -j /tmp/scpro.zip "SourceCodePro-2.042/TTF/SourceCodePro-Regular.ttf" "SourceCodePro-2.042/TTF/SourceCodePro-Bold.ttf" "SourceCodePro-2.042/TTF/SourceCodePro-It.ttf" "SourceCodePro-2.042/TTF/SourceCodePro-BoldIt.ttf" -d "$OUT/share/fonts/"
+          # Source Code Pro (version 2.042R-u)
+          curl -fL "https://github.com/adobe-fonts/source-code-pro/releases/download/2.042R-u/1.062R-i/1.026R-vf/TTF-source-code-pro-2.042R-u_1.062R-i.zip" -o /tmp/scpro.zip
+          unzip -j /tmp/scpro.zip "*.ttf" -d "$OUT/share/fonts/"
 
           rm -f /tmp/jbmono.zip /tmp/scpro.zip
 
