@@ -1025,24 +1025,35 @@ jobs:
           printf '%s\n' '<?xml version="1.0"?>' \
             '<!DOCTYPE fontconfig SYSTEM "fonts.dtd">' \
             '<fontconfig>' \
+            '  <!-- Bundled fonts directory (highest priority) -->' \
+            '  <dir prefix="default">share/fonts</dir>' \
+            '  <!-- System fonts directories -->' \
             '  <dir>/usr/share/fonts</dir>' \
             '  <dir>/usr/local/share/fonts</dir>' \
             '  <dir>~/.fonts</dir>' \
             '  <dir>~/.local/share/fonts</dir>' \
             '  <cachedir>~/.cache/fontconfig</cachedir>' \
             '  <cachedir>/var/cache/fontconfig</cachedir>' \
+            '  <!-- Set JetBrains Mono as default monospace font -->' \
             '  <match>' \
             '    <test name="family"><string>monospace</string></test>' \
             '    <edit name="family" mode="prepend" binding="strong">' \
             '      <string>JetBrains Mono</string>' \
             '    </edit>' \
             '  </match>' \
+            '  <!-- Alternative: Source Code Pro -->' \
+            '  <alias>' \
+            '    <family>Source Code Pro</family>' \
+            '    <default><family>monospace</family></default>' \
+            '  </alias>' \
             '</fontconfig>' > "$OUT/etc/fonts/fonts.conf"
 
           # Create AppRun wrapper that sets environment variables
           mv "$OUT/ghostty" "$OUT/ghostty.bin"
           printf '%s\n' '#!/bin/bash' \
             '# Self-contained Ghostty launcher for UOS20' \
+            '# Determine APPDIR (works when run from the bundle directory)' \
+            'APPDIR="${APPDIR:-$(cd "$(dirname "$(readlink -f "$0")")" && pwd)}"' \
             'export FONTCONFIG_PATH="$APPDIR/etc/fonts"' \
             'export FONTCONFIG_FILE=fonts.conf' \
             'export LD_LIBRARY_PATH="$APPDIR/lib:$LD_LIBRARY_PATH"' \
@@ -1050,6 +1061,55 @@ jobs:
             'exec "$APPDIR/ghostty.bin" "$@"' > "$OUT/AppRun"
           chmod +x "$OUT/AppRun"
           ln -sf AppRun "$OUT/ghostty"
+          
+          # Create desktop file for easy launching
+          mkdir -p "$OUT/share/applications"
+          printf '%s\n' '[Desktop Entry]' \
+            'Version=1.0' \
+            'Name=Ghostty' \
+            'Comment=Fast, feature-rich terminal emulator for UOS20' \
+            'Exec=/opt/ghostty-uos/ghostty-uos-amd64/ghostty' \
+            'Icon=/opt/ghostty-uos/ghostty-uos-amd64/share/icons/ghostty.png' \
+            'Terminal=false' \
+            'Type=Application' \
+            'Categories=System;TerminalEmulator;' \
+            'StartupNotify=true' \
+            'StartupWMClass=ghostty' > "$OUT/share/applications/ghostty.desktop"
+          
+          # Download Ghostty icon (if available) or create placeholder
+          mkdir -p "$OUT/share/icons"
+          curl -fL "https://raw.githubusercontent.com/ghostty-org/ghostty/main/assets/icons/icon.png" \
+            -o "$OUT/share/icons/ghostty.png" 2>/dev/null || \
+          printf '%s\n' '# Note: Icon file not found. You can add an icon manually.' \
+            '# Place a PNG icon at: /opt/ghostty-uos/ghostty-uos-amd64/share/icons/ghostty.png' \
+            > "$OUT/share/icons/README.txt"
+          
+          # Create installation instructions
+          printf '%s\n' '#!/bin/bash' \
+            '# Installation script for Ghostty on UOS20' \
+            '' \
+            'INSTALL_DIR="/opt/ghostty-uos"' \
+            'BUNDLE_NAME="ghostty-uos-amd64"' \
+            '' \
+            '# Extract the bundle' \
+            'mkdir -p "$INSTALL_DIR"' \
+            'tar xzf ghostty-uos-amd64.tar.gz -C "$INSTALL_DIR"' \
+            '' \
+            '# Set permissions' \
+            'chmod +x "$INSTALL_DIR/$BUNDLE_NAME/ghostty"' \
+            'chmod +x "$INSTALL_DIR/$BUNDLE_NAME/AppRun"' \
+            '' \
+            '# Create desktop entry' \
+            'cp "$INSTALL_DIR/$BUNDLE_NAME/share/applications/ghostty.desktop" /usr/share/applications/' \
+            '' \
+            '# Update icon cache' \
+            'gtk-update-icon-cache -f /usr/share/icons/hicolor/ 2>/dev/null || true' \
+            '' \
+            'echo "Ghostty installed successfully!"' \
+            'echo "You can now run it from the application menu or execute:"' \
+            'echo "  /opt/ghostty-uos/$BUNDLE_NAME/ghostty"' \
+            '' > "$OUT/install.sh"
+          chmod +x "$OUT/install.sh"
 
           echo "--- bundle structure ---"
           ls -la "$OUT/"
