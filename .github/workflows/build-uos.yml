@@ -106,7 +106,7 @@ jobs:
           apt-get install -y --no-install-recommends \
             build-essential \
             ca-certificates \
-            curl wget xz-utils tar gzip bzip2 \
+            curl wget xz-utils tar gzip bzip2 unzip \
             git \
             pkg-config \
             autoconf automake libtool \
