@@ -160,9 +160,9 @@ jobs:
           # We key on a manual version rather than yml hash so cache survives
           # iterative workflow tweaks. Bump the v* prefix to force a clean
           # rebuild from scratch.
-          key: uos-deps-v9-${{ github.run_id }}
+          key: uos-deps-v10-${{ github.run_id }}
           restore-keys: |
-            uos-deps-v9-
+            uos-deps-v10-
 
       - name: Install standalone Python 3.12 (debian:10's 3.7 is too old)
         run: |
@@ -1003,6 +1003,92 @@ jobs:
 
           echo "--- bundled libs ---"
           ls -la "$OUT/lib/"
+
+          # Download and bundle fonts (JetBrains Mono + Source Code Pro)
+          mkdir -p "$OUT/share/fonts"
+
+          # JetBrains Mono (version 2.304)
+          curl -fL "https://github.com/JetBrains/JetBrainsMono/releases/download/v2.304/JetBrainsMono-2.304.zip" -o /tmp/jbmono.zip
+          unzip -j /tmp/jbmono.zip "JetBrainsMono-2.304/fonts/ttf/JetBrainsMono-Regular.ttf" "JetBrainsMono-2.304/fonts/ttf/JetBrainsMono-Bold.ttf" "JetBrainsMono-2.304/fonts/ttf/JetBrainsMono-Italic.ttf" "JetBrainsMono-2.304/fonts/ttf/JetBrainsMono-BoldItalic.ttf" -d "$OUT/share/fonts/"
+
+          # Source Code Pro (version 2.042)
+          curl -fL "https://github.com/adobe-fonts/source-code-pro/releases/download/2.042R/SourceCodePro-2.042.zip" -o /tmp/scpro.zip
+          unzip -j /tmp/scpro.zip "SourceCodePro-2.042/TTF/SourceCodePro-Regular.ttf" "SourceCodePro-2.042/TTF/SourceCodePro-Bold.ttf" "SourceCodePro-2.042/TTF/SourceCodePro-It.ttf" "SourceCodePro-2.042/TTF/SourceCodePro-BoldIt.ttf" -d "$OUT/share/fonts/"
+
+          rm -f /tmp/jbmono.zip /tmp/scpro.zip
+
+          echo "--- bundled fonts ---"
+          ls -la "$OUT/share/fonts/"
+
+          # Create fontconfig configuration with bundled fonts
+          mkdir -p "$OUT/etc/fonts/conf.d"
+          cat > "$OUT/etc/fonts/fonts.conf" << 'EOF'
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <!-- Bundled fonts (highest priority) -->
+  <dir prefix="xdg">fonts</dir>
+  
+  <!-- System fonts -->
+  <dir>/usr/share/fonts</dir>
+  <dir>/usr/local/share/fonts</dir>
+  <dir>~/.fonts</dir>
+  <dir>~/.local/share/fonts</dir>
+  
+  <!-- Font cache -->
+  <cachedir>~/.cache/fontconfig</cachedir>
+  <cachedir>/var/cache/fontconfig</cachedir>
+  
+  <!-- Prefer bundled fonts as default monospace -->
+  <match>
+    <test name="family">
+      <string>monospace</string>
+    </test>
+    <edit name="family" mode="prepend" binding="strong">
+      <string>JetBrains Mono</string>
+    </edit>
+  </match>
+  
+  <alias binding="strong">
+    <family>JetBrains Mono</family>
+    <prefer>
+      <family>JetBrains Mono</family>
+    </prefer>
+    <default>
+      <family>monospace</family>
+    </default>
+  </alias>
+  
+  <alias binding="strong">
+    <family>Source Code Pro</family>
+    <prefer>
+      <family>Source Code Pro</family>
+    </prefer>
+    <default>
+      <family>monospace</family>
+    </default>
+  </alias>
+</fontconfig>
+EOF
+
+          # Create AppRun wrapper that sets environment variables
+          mv "$OUT/ghostty" "$OUT/ghostty.bin"
+          cat > "$OUT/AppRun" << 'EOF'
+#!/bin/bash
+# Self-contained Ghostty launcher for UOS20
+export FONTCONFIG_PATH="$APPDIR/etc/fonts"
+export FONTCONFIG_FILE=fonts.conf
+export LD_LIBRARY_PATH="$APPDIR/lib:$LD_LIBRARY_PATH"
+export GI_TYPELIB_PATH="$APPDIR/lib/girepository-1.0:/usr/lib/girepository-1.0"
+exec "$APPDIR/ghostty.bin" "$@"
+EOF
+          chmod +x "$OUT/AppRun"
+          ln -sf AppRun "$OUT/ghostty"
+
+          echo "--- bundle structure ---"
+          ls -la "$OUT/"
+          ls -la "$OUT/etc/fonts/"
+          ls -la "$OUT/share/fonts/"
 
       - name: Patch RPATH on binary and bundled libs
         run: |
