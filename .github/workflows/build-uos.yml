@@ -1020,7 +1020,7 @@ jobs:
           echo "--- bundled fonts ---"
           ls -la "$OUT/share/fonts/"
 
-# Create fontconfig configuration with bundled fonts
+          # Create fontconfig configuration with bundled fonts
           mkdir -p "$OUT/etc/fonts/conf.d"
           printf '%s\n' '<?xml version="1.0"?>' \
             '<!DOCTYPE fontconfig SYSTEM "fonts.dtd">' \
