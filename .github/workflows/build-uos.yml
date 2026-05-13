@@ -1020,40 +1020,36 @@ jobs:
           echo "--- bundled fonts ---"
           ls -la "$OUT/share/fonts/"
 
-          # Create fontconfig configuration with bundled fonts
+# Create fontconfig configuration with bundled fonts
           mkdir -p "$OUT/etc/fonts/conf.d"
           printf '%s\n' '<?xml version="1.0"?>' \
             '<!DOCTYPE fontconfig SYSTEM "fonts.dtd">' \
             '<fontconfig>' \
-            '  <!-- Bundled fonts directory (highest priority) -->' \
-            '  <dir prefix="default">share/fonts</dir>' \
-            '  <!-- System fonts directories -->' \
+            '  <!-- Bundled fonts (relative to XDG_DATA_HOME/share/fonts) -->' \
+            '  <dir prefix="xdg">fonts</dir>' \
+            '  <!-- System fonts -->' \
             '  <dir>/usr/share/fonts</dir>' \
             '  <dir>/usr/local/share/fonts</dir>' \
             '  <dir>~/.fonts</dir>' \
             '  <dir>~/.local/share/fonts</dir>' \
+            '  <!-- Font cache -->' \
             '  <cachedir>~/.cache/fontconfig</cachedir>' \
             '  <cachedir>/var/cache/fontconfig</cachedir>' \
-            '  <!-- Set JetBrains Mono as default monospace font -->' \
+            '  <!-- Prefer bundled fonts as default monospace -->' \
             '  <match>' \
             '    <test name="family"><string>monospace</string></test>' \
             '    <edit name="family" mode="prepend" binding="strong">' \
             '      <string>JetBrains Mono</string>' \
             '    </edit>' \
             '  </match>' \
-            '  <!-- Alternative: Source Code Pro -->' \
-            '  <alias>' \
-            '    <family>Source Code Pro</family>' \
-            '    <default><family>monospace</family></default>' \
-            '  </alias>' \
             '</fontconfig>' > "$OUT/etc/fonts/fonts.conf"
 
           # Create AppRun wrapper that sets environment variables
           mv "$OUT/ghostty" "$OUT/ghostty.bin"
           printf '%s\n' '#!/bin/bash' \
             '# Self-contained Ghostty launcher for UOS20' \
-            '# Determine APPDIR (works when run from the bundle directory)' \
-            'APPDIR="${APPDIR:-$(cd "$(dirname "$(readlink -f "$0")")" && pwd)}"' \
+            'APPDIR="${APPDIR:-$(dirname "$(readlink -f "$0")")}"' \
+            'export XDG_DATA_HOME="$APPDIR/share"' \
             'export FONTCONFIG_PATH="$APPDIR/etc/fonts"' \
             'export FONTCONFIG_FILE=fonts.conf' \
             'export LD_LIBRARY_PATH="$APPDIR/lib:$LD_LIBRARY_PATH"' \
