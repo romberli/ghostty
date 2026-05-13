@@ -1,13 +1,15 @@
+# DISABLED: This workflow is temporarily disabled for UOS20 build testing
+
 # Description:
 #   - Add milestone to a merged PR automatically
 #   - Add milestone to a closed issue that has a merged PR fix (if any)
 
 name: Milestone Action
-on:
-  issues:
-    types: [closed]
-  pull_request_target:
-    types: [closed]
+# DISABLED: on:
+# DISABLED:   issues:
+# DISABLED:     types: [closed]
+# DISABLED:   pull_request_target:
+# DISABLED:     types: [closed]
 
 jobs:
   update-milestone:

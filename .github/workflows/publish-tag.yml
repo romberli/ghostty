@@ -1,9 +1,11 @@
-on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to deploy (format: vX.Y.Z)"
-        required: true
+# DISABLED: This workflow is temporarily disabled for UOS20 build testing
+
+# DISABLED: on:
+# DISABLED:   workflow_dispatch:
+# DISABLED:     inputs:
+# DISABLED:       version:
+# DISABLED:         description: "Version to deploy (format: vX.Y.Z)"
+# DISABLED:         required: true
 
 name: Publish Tagged Release
 

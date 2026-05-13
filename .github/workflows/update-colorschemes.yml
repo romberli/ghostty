@@ -1,9 +1,11 @@
+# DISABLED: This workflow is temporarily disabled for UOS20 build testing
+
 name: Update iTerm2 colorschemes
-on:
-  schedule:
-    # Once a week
-    - cron: "0 0 * * 0"
-  workflow_dispatch:
+# DISABLED: on:
+# DISABLED:   schedule:
+# DISABLED:     # Once a week
+# DISABLED:     - cron: "0 0 * * 0"
+# DISABLED:   workflow_dispatch:
 jobs:
   update-iterm2-schemes:
     if: github.repository == 'ghostty-org/ghostty'

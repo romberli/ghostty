@@ -1,6 +1,8 @@
-on:
-  pull_request_target:
-    types: [opened, reopened]
+# DISABLED: This workflow is temporarily disabled for UOS20 build testing
+
+# DISABLED: on:
+# DISABLED:   pull_request_target:
+# DISABLED:     types: [opened, reopened]
 
 name: "Vouch - Check PR"
 

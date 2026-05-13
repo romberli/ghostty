@@ -1,7 +1,9 @@
-on:
-  push: {}
-  pull_request: {}
-  workflow_dispatch: {}
+# DISABLED: This workflow is temporarily disabled for UOS20 build testing
+
+# DISABLED: on:
+# DISABLED:   push: {}
+# DISABLED:   pull_request: {}
+# DISABLED:   workflow_dispatch: {}
 
 name: Test
 

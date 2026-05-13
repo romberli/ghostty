@@ -1,8 +1,10 @@
-on:
-  workflow_run:
-    workflows: [Test]
-    types: [completed]
-    branches: [main]
+# DISABLED: This workflow is temporarily disabled for UOS20 build testing
+
+# DISABLED: on:
+# DISABLED:   workflow_run:
+# DISABLED:     workflows: [Test]
+# DISABLED:     types: [completed]
+# DISABLED:     branches: [main]
 
   workflow_dispatch:
     inputs:

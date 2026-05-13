@@ -1,14 +1,16 @@
-on:
-  workflow_dispatch:
-    inputs:
-      source-run-id:
-        description: run id of the workflow that generated the artifact
-        required: true
-        type: string
-      source-artifact-id:
-        description: source tarball built during build-dist
-        required: true
-        type: string
+# DISABLED: This workflow is temporarily disabled for UOS20 build testing
+
+# DISABLED: on:
+# DISABLED:   workflow_dispatch:
+# DISABLED:     inputs:
+# DISABLED:       source-run-id:
+# DISABLED:         description: run id of the workflow that generated the artifact
+# DISABLED:         required: true
+# DISABLED:         type: string
+# DISABLED:       source-artifact-id:
+# DISABLED:         description: source tarball built during build-dist
+# DISABLED:         required: true
+# DISABLED:         type: string
 
 name: Flatpak
 

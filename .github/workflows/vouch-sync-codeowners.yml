@@ -1,7 +1,9 @@
-on:
-  schedule:
-    - cron: "0 0 * * 1" # Every Monday at midnight UTC
-  workflow_dispatch:
+# DISABLED: This workflow is temporarily disabled for UOS20 build testing
+
+# DISABLED: on:
+# DISABLED:   schedule:
+# DISABLED:     - cron: "0 0 * * 1" # Every Monday at midnight UTC
+# DISABLED:   workflow_dispatch:
 
 name: "Vouch - Sync CODEOWNERS"
 

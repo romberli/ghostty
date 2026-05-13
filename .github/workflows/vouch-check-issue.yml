@@ -1,6 +1,8 @@
-on:
-  issues:
-    types: [opened, reopened]
+# DISABLED: This workflow is temporarily disabled for UOS20 build testing
+
+# DISABLED: on:
+# DISABLED:   issues:
+# DISABLED:     types: [opened, reopened]
 
 name: "Vouch - Check Issue"
 

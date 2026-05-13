@@ -1,12 +1,14 @@
-on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to deploy (format: vX.Y.Z)"
-        required: true
-      upload:
-        description: "Upload final artifacts to R2"
-        default: false
+# DISABLED: This workflow is temporarily disabled for UOS20 build testing
+
+# DISABLED: on:
+# DISABLED:   workflow_dispatch:
+# DISABLED:     inputs:
+# DISABLED:       version:
+# DISABLED:         description: "Version to deploy (format: vX.Y.Z)"
+# DISABLED:         required: true
+# DISABLED:       upload:
+# DISABLED:         description: "Upload final artifacts to R2"
+# DISABLED:         default: false
 
   push:
     tags:

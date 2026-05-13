@@ -1,6 +1,8 @@
-on:
-  discussion_comment:
-    types: [created]
+# DISABLED: This workflow is temporarily disabled for UOS20 build testing
+
+# DISABLED: on:
+# DISABLED:   discussion_comment:
+# DISABLED:     types: [created]
 
 name: "Vouch - Manage by Discussion"
 

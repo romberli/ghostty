@@ -1,4 +1,6 @@
-on: [push, pull_request]
+# DISABLED: This workflow is temporarily disabled for UOS20 build testing
+
+# DISABLED: on: [push, pull_request]
 name: Nix
 
 concurrency:
