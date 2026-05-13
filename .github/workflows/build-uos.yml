@@ -1022,66 +1022,32 @@ jobs:
 
           # Create fontconfig configuration with bundled fonts
           mkdir -p "$OUT/etc/fonts/conf.d"
-          cat > "$OUT/etc/fonts/fonts.conf" << 'EOF'
-<?xml version="1.0"?>
-<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
-<fontconfig>
-  <!-- Bundled fonts (highest priority) -->
-  <dir prefix="xdg">fonts</dir>
-  
-  <!-- System fonts -->
-  <dir>/usr/share/fonts</dir>
-  <dir>/usr/local/share/fonts</dir>
-  <dir>~/.fonts</dir>
-  <dir>~/.local/share/fonts</dir>
-  
-  <!-- Font cache -->
-  <cachedir>~/.cache/fontconfig</cachedir>
-  <cachedir>/var/cache/fontconfig</cachedir>
-  
-  <!-- Prefer bundled fonts as default monospace -->
-  <match>
-    <test name="family">
-      <string>monospace</string>
-    </test>
-    <edit name="family" mode="prepend" binding="strong">
-      <string>JetBrains Mono</string>
-    </edit>
-  </match>
-  
-  <alias binding="strong">
-    <family>JetBrains Mono</family>
-    <prefer>
-      <family>JetBrains Mono</family>
-    </prefer>
-    <default>
-      <family>monospace</family>
-    </default>
-  </alias>
-  
-  <alias binding="strong">
-    <family>Source Code Pro</family>
-    <prefer>
-      <family>Source Code Pro</family>
-    </prefer>
-    <default>
-      <family>monospace</family>
-    </default>
-  </alias>
-</fontconfig>
-EOF
+          printf '%s\n' '<?xml version="1.0"?>' \
+            '<!DOCTYPE fontconfig SYSTEM "fonts.dtd">' \
+            '<fontconfig>' \
+            '  <dir>/usr/share/fonts</dir>' \
+            '  <dir>/usr/local/share/fonts</dir>' \
+            '  <dir>~/.fonts</dir>' \
+            '  <dir>~/.local/share/fonts</dir>' \
+            '  <cachedir>~/.cache/fontconfig</cachedir>' \
+            '  <cachedir>/var/cache/fontconfig</cachedir>' \
+            '  <match>' \
+            '    <test name="family"><string>monospace</string></test>' \
+            '    <edit name="family" mode="prepend" binding="strong">' \
+            '      <string>JetBrains Mono</string>' \
+            '    </edit>' \
+            '  </match>' \
+            '</fontconfig>' > "$OUT/etc/fonts/fonts.conf"
 
           # Create AppRun wrapper that sets environment variables
           mv "$OUT/ghostty" "$OUT/ghostty.bin"
-          cat > "$OUT/AppRun" << 'EOF'
-#!/bin/bash
-# Self-contained Ghostty launcher for UOS20
-export FONTCONFIG_PATH="$APPDIR/etc/fonts"
-export FONTCONFIG_FILE=fonts.conf
-export LD_LIBRARY_PATH="$APPDIR/lib:$LD_LIBRARY_PATH"
-export GI_TYPELIB_PATH="$APPDIR/lib/girepository-1.0:/usr/lib/girepository-1.0"
-exec "$APPDIR/ghostty.bin" "$@"
-EOF
+          printf '%s\n' '#!/bin/bash' \
+            '# Self-contained Ghostty launcher for UOS20' \
+            'export FONTCONFIG_PATH="$APPDIR/etc/fonts"' \
+            'export FONTCONFIG_FILE=fonts.conf' \
+            'export LD_LIBRARY_PATH="$APPDIR/lib:$LD_LIBRARY_PATH"' \
+            'export GI_TYPELIB_PATH="$APPDIR/lib/girepository-1.0:/usr/lib/girepository-1.0"' \
+            'exec "$APPDIR/ghostty.bin" "$@"' > "$OUT/AppRun"
           chmod +x "$OUT/AppRun"
           ln -sf AppRun "$OUT/ghostty"
 
