@@ -1060,7 +1060,8 @@ jobs:
         run: |
           set -eux
           OUT=dist/ghostty-uos-amd64
-          patchelf --set-rpath '$ORIGIN/lib' "$OUT/ghostty"
+          # Patch the actual binary (ghostty.bin), not the wrapper script
+          patchelf --set-rpath '$ORIGIN/lib' "$OUT/ghostty.bin"
           for so in "$OUT/lib/"*.so*; do
             [ -f "$so" ] || continue
             if file "$so" | grep -q ELF; then
@@ -1075,12 +1076,12 @@ jobs:
           OUT=dist/ghostty-uos-amd64
           cd "$OUT"
 
-          echo "=== ldd ./ghostty ==="
-          ldd ./ghostty
+          echo "=== ldd ./ghostty.bin ==="
+          ldd ./ghostty.bin
 
           echo
           echo "=== check 'not found' ==="
-          if ldd ./ghostty | grep -F "not found"; then
+          if ldd ./ghostty.bin | grep -F "not found"; then
             echo "ERROR: unresolved deps in ghostty"
             exit 1
           fi
@@ -1118,7 +1119,7 @@ jobs:
               OFFENDERS+=("$f:GLIBC_${high}")
             fi
           }
-          scan_one ./ghostty
+          scan_one ./ghostty.bin
           for so in lib/*.so*; do
             [ -f "$so" ] || continue
             scan_one "$so"
