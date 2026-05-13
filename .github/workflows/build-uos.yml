@@ -1080,30 +1080,143 @@ jobs:
             '# Place a PNG icon at: /opt/ghostty-uos/ghostty-uos-amd64/share/icons/ghostty.png' \
             > "$OUT/share/icons/README.txt"
           
-          # Create installation instructions
+          # Create ghostty configuration template
+          mkdir -p "$OUT/share/doc"
+          printf '%s\n' \
+            '# Ghostty configuration template for UOS20' \
+            '# Copy this file to ~/.config/ghostty/config to customize settings' \
+            '' \
+            '# Font settings' \
+            '# font-family = "JetBrains Mono"' \
+            '# font-family-bold = "JetBrains Mono Bold"' \
+            '# font-family-italic = "JetBrains Mono Italic"' \
+            '# font-family-bold-italic = "JetBrains Mono Bold Italic"' \
+            '# font-size = 12' \
+            '' \
+            '# Alternative font: Source Code Pro' \
+            '# font-family = "Source Code Pro"' \
+            '' \
+            '# Theme settings' \
+            '# theme = "dark"' \
+            '# background-opacity = 0.95' \
+            '' \
+            '# Performance settings' \
+            '# scrollback-limit = 10000' \
+            '' \
+            '# Keybindings (example)' \
+            '# keybind = ctrl+shift+c=copy_to_clipboard' \
+            '# keybind = ctrl+shift+v=paste_from_clipboard' \
+            '' \
+            '# More settings: https://ghostty.org/docs/config' \
+            '' > "$OUT/share/doc/ghostty.conf.example"
+          
+          # Create README documentation
+          printf '%s\n' \
+            '# Ghostty for UOS20 (统信UOS 20)' \
+            '' \
+            '## 系统要求' \
+            '- 统信UOS 20 (基于Debian 10, glibc 2.28)' \
+            '- Wayland显示服务器' \
+            '' \
+            '## 安装步骤' \
+            '' \
+            '### 方法1: 使用安装脚本（推荐）' \
+            '```bash' \
+            'sudo ./install.sh' \
+            '```' \
+            '安装完成后，Ghostty将出现在系统应用菜单中，可以直接点击运行。' \
+            '' \
+            '### 方法2: 手动安装' \
+            '```bash' \
+            '# 解压到任意目录' \
+            'tar xzf ghostty-uos-amd64.tar.gz' \
+            '' \
+            '# 运行' \
+            './ghostty-uos-amd64/ghostty' \
+            '```' \
+            '' \
+            '## 配置文件' \
+            '- 配置模板：`share/doc/ghostty.conf.example`' \
+            '- 复制到：`~/.config/ghostty/config`' \
+            '- 编辑配置文件以自定义字体、主题、按键绑定等' \
+            '' \
+            '## 内置字体' \
+            '- JetBrains Mono (默认)' \
+            '- Source Code Pro' \
+            '' \
+            '## 运行要求' \
+            '- 此版本已打包所有必要的依赖库' \
+            '- 仅依赖系统glibc 2.28' \
+            '- 可在UOS20上直接运行，无需额外安装依赖' \
+            '' \
+            '## 故障排除' \
+            '- 如果图标未显示，请检查`share/icons/ghostty.png`是否存在' \
+            '- 如果字体渲染异常，请检查`share/fonts/`目录下的字体文件' \
+            '- 运行`ldd ghostty.bin`检查是否有缺失的依赖库' \
+            '' \
+            '## 更多信息' \
+            '- Ghostty官方文档：https://ghostty.org/docs' \
+            '- 配置参考：https://ghostty.org/docs/config' \
+            '' > "$OUT/README.md"
+          
+          # Create installation script
           printf '%s\n' '#!/bin/bash' \
             '# Installation script for Ghostty on UOS20' \
+            '# Requires sudo privileges' \
             '' \
             'INSTALL_DIR="/opt/ghostty-uos"' \
             'BUNDLE_NAME="ghostty-uos-amd64"' \
             '' \
+            '# Check if running as root' \
+            'if [ "$EUID" -ne 0 ]; then' \
+            '  echo "Please run with sudo: sudo ./install.sh"' \
+            '  exit 1' \
+            'fi' \
+            '' \
             '# Extract the bundle' \
+            'echo "Installing Ghostty to $INSTALL_DIR..."' \
             'mkdir -p "$INSTALL_DIR"' \
             'tar xzf ghostty-uos-amd64.tar.gz -C "$INSTALL_DIR"' \
             '' \
             '# Set permissions' \
             'chmod +x "$INSTALL_DIR/$BUNDLE_NAME/ghostty"' \
             'chmod +x "$INSTALL_DIR/$BUNDLE_NAME/AppRun"' \
+            'chmod +x "$INSTALL_DIR/$BUNDLE_NAME/install.sh"' \
             '' \
-            '# Create desktop entry' \
-            'cp "$INSTALL_DIR/$BUNDLE_NAME/share/applications/ghostty.desktop" /usr/share/applications/' \
+            '# Install desktop entry' \
+            'DESKTOP_FILE="$INSTALL_DIR/$BUNDLE_NAME/share/applications/ghostty.desktop"' \
+            'if [ -f "$DESKTOP_FILE" ]; then' \
+            '  # Update desktop file paths to absolute installation location' \
+            '  sed -i "s|Exec=/opt/ghostty-uos|$INSTALL_DIR|g" "$DESKTOP_FILE"' \
+            '  sed -i "s|Icon=/opt/ghostty-uos|$INSTALL_DIR|g" "$DESKTOP_FILE"' \
+            '  cp "$DESKTOP_FILE" /usr/share/applications/' \
+            '  echo "Desktop entry installed to /usr/share/applications/"' \
+            'else' \
+            '  echo "Warning: Desktop file not found"' \
+            'fi' \
             '' \
-            '# Update icon cache' \
-            'gtk-update-icon-cache -f /usr/share/icons/hicolor/ 2>/dev/null || true' \
+            '# Install icon (if exists)' \
+            'ICON_FILE="$INSTALL_DIR/$BUNDLE_NAME/share/icons/ghostty.png"' \
+            'if [ -f "$ICON_FILE" ]; then' \
+            '  mkdir -p /usr/share/icons/hicolor/256x256/apps/' \
+            '  cp "$ICON_FILE" /usr/share/icons/hicolor/256x265/apps/ghostty.png' \
+            '  gtk-update-icon-cache -f /usr/share/icons/hicolor/ 2>/dev/null || true' \
+            '  echo "Icon installed to system icon theme"' \
+            'else' \
+            '  echo "Warning: Icon file not found"' \
+            'fi' \
             '' \
-            'echo "Ghostty installed successfully!"' \
-            'echo "You can now run it from the application menu or execute:"' \
-            'echo "  /opt/ghostty-uos/$BUNDLE_NAME/ghostty"' \
+            'echo ""' \
+            'echo "✓ Ghostty installed successfully!"' \
+            'echo ""' \
+            'echo "Usage:"' \
+            'echo "  - From application menu: Search for 'Ghostty' in your app launcher"' \
+            'echo "  - From terminal: $INSTALL_DIR/$BUNDLE_NAME/ghostty"' \
+            'echo "  - Config template: $INSTALL_DIR/$BUNDLE_NAME/share/doc/ghostty.conf.example"' \
+            'echo ""' \
+            'echo "To customize settings:"' \
+            'echo "  cp $INSTALL_DIR/$BUNDLE_NAME/share/doc/ghostty.conf.example ~/.config/ghostty/config"' \
+            'echo "  nano ~/.config/ghostty/config"' \
             '' > "$OUT/install.sh"
           chmod +x "$OUT/install.sh"
 
