@@ -403,9 +403,18 @@ pub fn add(
     // on x86_64.
     if (step.rootModuleTarget().os.tag == .linux) {
         const triple = try step.rootModuleTarget().linuxTriple(b.allocator);
-        const path = b.fmt("/usr/lib/{s}", .{triple});
-        if (std.fs.accessAbsolute(path, .{})) {
-            step.addLibraryPath(.{ .cwd_relative = path });
+        const lib_path = b.fmt("/usr/lib/{s}", .{triple});
+        if (std.fs.accessAbsolute(lib_path, .{})) {
+            step.addLibraryPath(.{ .cwd_relative = lib_path });
+        } else |_| {}
+        
+        const include_path = b.fmt("/usr/include/{s}", .{triple});
+        if (std.fs.accessAbsolute(include_path, .{})) {
+            step.addSystemIncludePath(.{ .cwd_relative = include_path });
+        } else |_| {}
+        
+        if (std.fs.accessAbsolute("/usr/include", .{})) {
+            step.addSystemIncludePath(.{ .cwd_relative = "/usr/include" });
         } else |_| {}
     }
 
