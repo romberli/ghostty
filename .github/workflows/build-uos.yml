@@ -924,6 +924,9 @@ jobs:
           export GI_TYPELIB_PATH="${PREFIX}/lib/girepository-1.0:/usr/lib/girepository-1.0"
           # Also ensure LD_LIBRARY_PATH includes our built libraries for g-ir-scanner subprocess
           export LD_LIBRARY_PATH="${PREFIX}/lib:${LD_LIBRARY_PATH}"
+          # Add system include paths for @cImport to find X11 and other headers
+          # Zig's @cImport uses Clang which needs explicit paths
+          export CFLAGS="-I${PREFIX}/include -I/usr/include -I/usr/include/x86_64-linux-gnu"
           zig build \
             -Doptimize=ReleaseSafe \
             -Dtarget="${ZIG_TARGET}" \
