@@ -146,6 +146,9 @@ jobs:
             libxrender-dev \
             libxext-dev \
             libxrandr-dev \
+            libxi-dev \
+            libxinerama-dev \
+            libxcursor-dev \
             libxcb1-dev \
             libxcb-render0-dev \
             libxcb-xkb-dev \
