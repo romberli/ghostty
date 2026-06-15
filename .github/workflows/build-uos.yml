@@ -103,6 +103,12 @@ jobs:
       - name: Install newer LLVM from apt.llvm.org
         run: |
           set -eux
+          # Install prerequisites
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            wget \
+            gnupg \
+            ca-certificates
           # Add LLVM repository for Debian 10 (buster)
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
           echo "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-11 main" > /etc/apt/sources.list.d/llvm.list
