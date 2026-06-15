@@ -100,6 +100,22 @@ jobs:
           # buster is no longer signed by current keyring; allow it.
           echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid
 
+      - name: Install newer LLVM from apt.llvm.org
+        run: |
+          set -eux
+          # Add LLVM repository for Debian 10 (buster)
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
+          echo "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-11 main" > /etc/apt/sources.list.d/llvm.list
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            llvm-11-dev \
+            libllvm11 \
+            clang-11
+          # Create symlinks
+          update-alternatives --install /usr/bin/llvm-config llvm-config /usr/bin/llvm-config-11 100
+          update-alternatives --install /usr/bin/clang clang /usr/bin/clang-11 100
+          llvm-config --version
+
       - name: Install host build tools (apt)
         run: |
           set -eux
@@ -124,7 +140,7 @@ jobs:
             libtiff-dev \
             libegl1-mesa-dev \
             libgl1-mesa-dev \
-            libgles2-mesa-dev \
+            libcurl4-openssl-dev \
             libcurl4-openssl-dev \
             libyaml-dev \
             libzstd-dev \
