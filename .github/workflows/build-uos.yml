@@ -954,7 +954,7 @@ jobs:
             echo "skip: Mesa llvmpipe already built"
             exit 0
           fi
-          cd /tmp
+          export LLVM_CONFIG=${LLVM_CONFIG:-/usr/bin/llvm-config-11}
           UA='Mozilla/5.0 (X11; Linux x86_64)'
           download() {
             for i in 1 2 3 4 5; do
