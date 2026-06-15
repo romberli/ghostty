@@ -73,7 +73,7 @@ env:
   V_LIBADWAITA: "1.5.4"
   V_GTK4_LAYER_SHELL: "1.1.0"
   V_BLUEPRINT: "0.20.4"
-  V_GOBJECT_INTROSPECTION: "1.78.1"
+  V_MESA: "21.3.9"
 
 jobs:
   build:
@@ -139,8 +139,8 @@ jobs:
             libgirepository1.0-dev \
             gir1.2-gdkpixbuf-2.0 \
             gir1.2-pango-1.0 \
-            gir1.2-harfbuzz-0.0 \
-            gir1.2-freetype2-2.0 \
+            libonig-dev \
+            libllvm7-dev \
             gir1.2-graphene-1.0 \
             libx11-dev \
             libxrender-dev \
@@ -176,9 +176,9 @@ jobs:
           # iterative workflow tweaks. Bump the v* prefix to force a clean
           # rebuild from scratch.
           # Bumped to v11 to force rebuild with X11 support enabled
-          key: uos-deps-v11-${{ github.run_id }}
+          key: uos-deps-v12-${{ github.run_id }}
           restore-keys: |
-            uos-deps-v11-
+            uos-deps-v12-
 
       - name: Install standalone Python 3.12 (debian:10's 3.7 is too old)
         run: |
@@ -891,13 +891,72 @@ jobs:
           ninja -C build install
           pkg-config --modversion gtk4-layer-shell-0
 
-      # ----- end source builds -----
+      - name: Build Mesa (llvmpipe software renderer for OpenGL 4.5)
+        run: |
+          set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/dri.pc" ] || [ -f "/opt/deps/lib/dri/llvmpipe_dri.so" ]; then
+            echo "skip: Mesa llvmpipe already built"
+            exit 0
+          fi
+          cd /tmp
+          UA='Mozilla/5.0 (X11; Linux x86_64)'
+          download() {
+            for i in 1 2 3 4 5; do
+              if curl -fSL --retry 3 --retry-delay 5 -A "$UA" "$1" -o mesa.tar.xz; then return 0; fi
+              echo "retry $i for $1"; sleep 5
+            done
+            return 1
+          }
+          download "https://archive.mesa3d.org/releases/mesa-${V_MESA}.tar.xz" \
+          || download "https://gitlab.freedesktop.org/mesa/mesa/-/archive/mesa-${V_MESA}/mesa-mesa-${V_MESA}.tar.gz"
+          if file mesa.tar.xz | grep -q 'XZ compressed'; then
+            tar xJf mesa.tar.xz
+          else
+            tar xzf mesa.tar.xz
+          fi
+          # GitLab archive has different dir name
+          if [ -d "mesa-mesa-${V_MESA}" ] && [ ! -d "mesa-${V_MESA}" ]; then
+            mv "mesa-mesa-${V_MESA}" "mesa-${V_MESA}"
+          fi
+          cd mesa-${V_MESA}
+          rm -f subprojects/*.wrap
+          export LLVM_CONFIG=${LLVM_CONFIG:-/usr/bin/llvm-config-7}
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            --default-library=shared \
+            --wrap-mode=nofallback \
+            -Dgallium-drivers=llvmpipe \
+            -Dvulkan-drivers= \
+            -Ddri3=true \
+            -Dglx=dri \
+            -Degl=true \
+            -Dgles1=false \
+            -Dgles2=false \
+            -Dopengl=true \
+            -Dshared-llvm=enabled \
+            -Dplatforms=x11,wayland \
+            -Dllvm=enabled \
+            -Ddri-drivers= \
+            -Dgbm=enabled \
+            -Dglvnd=false \
+            -Dmicrosoft-clc=disabled \
+            -Dtools= \
+            -Dtests=false \
+            -Dinstall-tests=false
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          echo "--- Mesa llvmpipe installed ---"
+          ls -la "${PREFIX}/lib/dri/" || true
+          ls -la "${PREFIX}/lib/libGL"* || true
+          pkg-config --modversion gl || true
 
       - name: Install PyGObject (needed by blueprint-compiler)
         run: |
           set -eux
           # PyGObject needs cairo/glib already compiled, so install after deps
-          "${PY_PREFIX}/bin/pip3" install --no-cache-dir "pygobject==3.42.0"
+          "${PY_PREFIX}/bin/pip3" install --no-cache-dir "pygobject==3.42.0" "pyyaml" "packaging" "pycparser"
           # Verify blueprint-compiler works
           blueprint-compiler --version
 
@@ -1022,8 +1081,29 @@ jobs:
             done < <(ldd "$target" 2>/dev/null || true)
           done
 
+          # Explicitly bundle Mesa DRI drivers (dlopen'd, not caught by ldd)
+          echo "--- bundling Mesa DRI drivers ---"
+          mkdir -p "$OUT/lib/dri"
+          if [ -f "${PREFIX}/lib/dri/llvmpipe_dri.so" ]; then
+            cp -L "${PREFIX}/lib/dri/llvmpipe_dri.so" "$OUT/lib/dri/"
+            chmod u+w "$OUT/lib/dri/llvmpipe_dri.so"
+            echo "Bundled llvmpipe_dri.so"
+          fi
+          # Also bundle libLLVM if present (Mesa depends on it)
+          for lib in "${PREFIX}/lib/libLLVM"*.so*; do
+            [ -f "$lib" ] || continue
+            base=$(basename "$lib")
+            if [ -z "${SEEN[$base]:-}" ]; then
+              cp -L "$lib" "$OUT/lib/$base"
+              chmod u+w "$OUT/lib/$base"
+              SEEN[$base]=1
+              echo "Bundled $base"
+            fi
+          done
+
           echo "--- bundled libs ---"
           ls -la "$OUT/lib/"
+          ls -la "$OUT/lib/dri/" || true
 
           # Download and bundle fonts (JetBrains Mono + Source Code Pro)
           mkdir -p "$OUT/share/fonts"
@@ -1102,15 +1182,12 @@ jobs:
             '  fi' \
             'fi' \
             '' \
-            '# Ensure XDG_RUNTIME_DIR exists for Wayland' \
-            'if [ "$GDK_BACKEND" = "wayland" ]; then' \
-            '  export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"' \
-            '  if [ ! -d "$XDG_RUNTIME_DIR" ]; then' \
-            '    export XDG_RUNTIME_DIR="/tmp/runtime-$(id -u)"' \
-            '    mkdir -p "$XDG_RUNTIME_DIR"' \
-            '    chmod 700 "$XDG_RUNTIME_DIR"' \
-            '  fi' \
-            'fi' \
+            '# Force Mesa llvmpipe software rendering (OpenGL 4.5)' \
+            '# Required for VMs without GPU 3D acceleration' \
+            'export LIBGL_ALWAYS_SOFTWARE=1' \
+            'export LIBGL_DRIVERS_PATH="$APPDIR/lib/dri"' \
+            'export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe' \
+            'export __LLVM_SYNC=1' \
             '' \
             'exec "$APPDIR/ghostty.bin" "$@"' > "$OUT/AppRun"
           chmod +x "$OUT/AppRun"
@@ -1289,6 +1366,15 @@ jobs:
           OUT=dist/ghostty-uos-amd64
           # Patch the actual binary (ghostty.bin), not the wrapper script
           patchelf --set-rpath '$ORIGIN/lib' "$OUT/ghostty.bin"
+          # Patch DRI drivers (in lib/dri/ subdir, need $ORIGIN/.. to find libs in lib/)
+          if [ -d "$OUT/lib/dri" ]; then
+            for dri in "$OUT/lib/dri/"*.so; do
+              [ -f "$dri" ] || continue
+              if file "$dri" | grep -q ELF; then
+                patchelf --set-rpath '$ORIGIN/..' "$dri" || true
+              fi
+            done
+          fi
           for so in "$OUT/lib/"*.so*; do
             [ -f "$so" ] || continue
             if file "$so" | grep -q ELF; then
