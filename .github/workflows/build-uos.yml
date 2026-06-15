@@ -929,22 +929,18 @@ jobs:
             --wrap-mode=nofallback \
             -Dgallium-drivers=swrast \
             -Dvulkan-drivers= \
-            -Ddri3=true \
+            -Ddri3=enabled \
             -Dglx=dri \
-            -Degl=true \
-            -Dgles1=false \
-            -Dgles2=false \
+            -Degl=enabled \
+            -Dgles1=disabled \
+            -Dgles2=disabled \
             -Dopengl=true \
             -Dshared-llvm=enabled \
             -Dplatforms=x11,wayland \
             -Dllvm=enabled \
-            -Ddri-drivers= \
             -Dgbm=enabled \
             -Dglvnd=false \
-            -Dmicrosoft-clc=disabled \
-            -Dtools= \
-            -Dtests=false \
-            -Dinstall-tests=false
+            -Dtools=
           ninja -C build -j"$(nproc)"
           ninja -C build install
           echo "--- Mesa llvmpipe installed ---"
