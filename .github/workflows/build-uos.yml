@@ -74,6 +74,7 @@ env:
   V_GTK4_LAYER_SHELL: "1.1.0"
   V_BLUEPRINT: "0.20.4"
   V_MESA: "23.3.6"
+  V_LIBDRM: "2.4.120"
 
 jobs:
   build:
@@ -892,6 +893,37 @@ jobs:
           ninja -C build -j"$(nproc)"
           ninja -C build install
           pkg-config --modversion gtk4-layer-shell-0
+
+      - name: Build libdrm (needed by Mesa, debian:10 has 2.4.97 but Mesa needs >= 2.4.109)
+        run: |
+          set -eux
+          if [ -f "/opt/deps/lib/pkgconfig/libdrm.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/libdrm.pc present"; exit 0; fi
+          cd /tmp
+          curl -fL "https://gitlab.freedesktop.org/mesa/drm/-/archive/libdrm-${V_LIBDRM}/drm-libdrm-${V_LIBDRM}.tar.gz" -o libdrm.tar.gz
+          tar xzf libdrm.tar.gz
+          cd drm-libdrm-${V_LIBDRM}
+          meson setup build \
+            --prefix="${PREFIX}" \
+            --libdir=lib \
+            --buildtype=release \
+            -Dintel=disabled \
+            -Dradeon=disabled \
+            -Damdgpu=disabled \
+            -Dnouveau=disabled \
+            -Dvmwgfx=disabled \
+            -Domap=disabled \
+            -Dexynos=disabled \
+            -Dfreedreno=disabled \
+            -Dtegra=disabled \
+            -Dvc4=disabled \
+            -Detnaviv=disabled \
+            -Dcairo-tests=disabled \
+            -Dman-pages=disabled \
+            -Dinstall-test-programs=false \
+            -Dudev=false
+          ninja -C build -j"$(nproc)"
+          ninja -C build install
+          pkg-config --modversion libdrm
 
       - name: Build Mesa (llvmpipe software renderer for OpenGL 4.5)
         run: |
