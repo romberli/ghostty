@@ -140,7 +140,7 @@ jobs:
             gir1.2-gdkpixbuf-2.0 \
             gir1.2-pango-1.0 \
             libonig-dev \
-            libllvm7-dev \
+            llvm-7-dev \
             gir1.2-graphene-1.0 \
             libx11-dev \
             libxrender-dev \
