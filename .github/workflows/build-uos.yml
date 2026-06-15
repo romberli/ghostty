@@ -73,7 +73,7 @@ env:
   V_LIBADWAITA: "1.5.4"
   V_GTK4_LAYER_SHELL: "1.1.0"
   V_BLUEPRINT: "0.20.4"
-  V_MESA: "21.3.8"
+  V_MESA: "23.0.0"
   V_LIBDRM: "2.4.120"
 
 jobs:
