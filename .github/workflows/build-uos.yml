@@ -899,9 +899,9 @@ jobs:
           set -eux
           if [ -f "/opt/deps/lib/pkgconfig/libdrm.pc" ]; then echo "skip: marker /opt/deps/lib/pkgconfig/libdrm.pc present"; exit 0; fi
           cd /tmp
-          curl -fL "https://gitlab.freedesktop.org/mesa/drm/-/archive/libdrm-${V_LIBDRM}/drm-libdrm-${V_LIBDRM}.tar.gz" -o libdrm.tar.gz
-          tar xzf libdrm.tar.gz
-          cd drm-libdrm-${V_LIBDRM}
+          curl -fL "https://dri.freedesktop.org/libdrm/libdrm-${V_LIBDRM}.tar.xz" -o libdrm.tar.xz
+          tar xJf libdrm.tar.xz
+          cd libdrm-${V_LIBDRM}
           meson setup build \
             --prefix="${PREFIX}" \
             --libdir=lib \
