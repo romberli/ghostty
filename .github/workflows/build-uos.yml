@@ -73,7 +73,7 @@ env:
   V_LIBADWAITA: "1.5.4"
   V_GTK4_LAYER_SHELL: "1.1.0"
   V_BLUEPRINT: "0.20.4"
-  V_MESA: "21.3.8"
+  V_MESA: "23.3.6"
 
 jobs:
   build:
@@ -907,7 +907,7 @@ jobs:
             done
             return 1
           }
-          download "https://archive.mesa3d.org/releases/mesa-${V_MESA}.tar.xz" \
+          download "https://archive.mesa3d.org/mesa-${V_MESA}.tar.xz" \
           || download "https://gitlab.freedesktop.org/mesa/mesa/-/archive/mesa-${V_MESA}/mesa-mesa-${V_MESA}.tar.gz"
           if file mesa.tar.xz | grep -q 'XZ compressed'; then
             tar xJf mesa.tar.xz
