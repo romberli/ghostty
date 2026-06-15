@@ -927,7 +927,7 @@ jobs:
             --buildtype=release \
             --default-library=shared \
             --wrap-mode=nofallback \
-            -Dgallium-drivers=llvmpipe \
+            -Dgallium-drivers=swrast \
             -Dvulkan-drivers= \
             -Ddri3=true \
             -Dglx=dri \
