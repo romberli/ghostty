@@ -198,7 +198,9 @@ jobs:
             "meson==1.5.2" \
             "ninja==1.11.1.1" \
             "blueprint-compiler==${V_BLUEPRINT}" \
-            "jinja2"
+            "jinja2" \
+            "mako" \
+            "packaging"
           ln -sf "${PY_PREFIX}/bin/python3" "${PY_PREFIX}/bin/python"
           # Fix shebang in blueprint-compiler to use our Python
           sed -i '1s|^#!.*|#!/opt/python/bin/python3|' "${PY_PREFIX}/bin/blueprint-compiler"
