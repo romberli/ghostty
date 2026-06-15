@@ -73,7 +73,7 @@ env:
   V_LIBADWAITA: "1.5.4"
   V_GTK4_LAYER_SHELL: "1.1.0"
   V_BLUEPRINT: "0.20.4"
-  V_MESA: "21.3.9"
+  V_MESA: "21.3.8"
   V_LIBDRM: "2.4.120"
 
 jobs:
@@ -963,16 +963,16 @@ jobs:
             --wrap-mode=nofallback \
             -Dgallium-drivers=swrast \
             -Dvulkan-drivers= \
-            -Ddri3=enabled \
+            -Ddri3=true \
             -Dglx=dri \
-            -Degl=enabled \
-            -Dgles1=disabled \
-            -Dgles2=disabled \
+            -Degl=true \
+            -Dgles1=false \
+            -Dgles2=false \
             -Dopengl=true \
-            -Dshared-llvm=enabled \
+            -Dshared-llvm=true \
             -Dplatforms=x11,wayland \
             -Dllvm=enabled \
-            -Dgbm=enabled \
+            -Dgbm=true \
             -Dglvnd=false \
             -Dtools=
           ninja -C build -j"$(nproc)"
