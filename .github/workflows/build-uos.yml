@@ -1243,7 +1243,44 @@ jobs:
             '' \
             'exec "$APPDIR/ghostty.bin" "$@"' > "$OUT/AppRun"
           chmod +x "$OUT/AppRun"
-          ln -sf AppRun "$OUT/ghostty"
+          
+          # Create a self-contained ghostty wrapper that works when called directly
+          # This allows running ./ghostty from any directory
+          rm -f "$OUT/ghostty"
+          printf '%s\n' '#!/bin/bash' \
+            '# Self-contained Ghostty launcher - works when called directly' \
+            'APPDIR="${APPDIR:-$(dirname "$(readlink -f "$0")")}"' \
+            '' \
+            '# Set up bundled resources' \
+            'export XDG_DATA_HOME="$APPDIR/share"' \
+            'export FONTCONFIG_PATH="$APPDIR/etc/fonts"' \
+            'export FONTCONFIG_FILE=fonts.conf' \
+            'export LD_LIBRARY_PATH="$APPDIR/lib:$LD_LIBRARY_PATH"' \
+            'export GI_TYPELIB_PATH="$APPDIR/lib/girepository-1.0:/usr/lib/girepository-1.0"' \
+            '' \
+            '# Auto-detect display backend' \
+            'if [ -n "$WAYLAND_DISPLAY" ] && [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then' \
+            '  export GDK_BACKEND=wayland' \
+            'elif [ -n "$DISPLAY" ]; then' \
+            '  export GDK_BACKEND=x11' \
+            'else' \
+            '  if [ -S "$XDG_RUNTIME_DIR/wayland-0" ]; then' \
+            '    export GDK_BACKEND=wayland' \
+            '    export WAYLAND_DISPLAY=wayland-0' \
+            '  elif [ -e /tmp/.X11-unix/X0 ]; then' \
+            '    export GDK_BACKEND=x11' \
+            '    export DISPLAY=:0' \
+            '  fi' \
+            'fi' \
+            '' \
+            '# Force Mesa llvmpipe software rendering' \
+            'export LIBGL_ALWAYS_SOFTWARE=1' \
+            'export LIBGL_DRIVERS_PATH="$APPDIR/lib/dri"' \
+            'export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe' \
+            'export __LLVM_SYNC=1' \
+            '' \
+            'exec "$APPDIR/ghostty.bin" "$@"' > "$OUT/ghostty"
+          chmod +x "$OUT/ghostty"
           
           # Create desktop file for easy launching
           mkdir -p "$OUT/share/applications"
