@@ -1088,6 +1088,8 @@ jobs:
           OUT=dist/ghostty-uos-amd64
           mkdir -p "$OUT/lib"
           cp zig-out/bin/ghostty "$OUT/ghostty"
+          # Copy Ghostty resources (shell integration, terminfo, themes, etc.)
+          cp -r zig-out/share/ghostty "$OUT/share/ghostty"
 
           is_glibc_lib() {
             case "$1" in
@@ -1227,6 +1229,7 @@ jobs:
             'export FONTCONFIG_FILE=fonts.conf' \
             'export LD_LIBRARY_PATH="$APPDIR/lib:$LD_LIBRARY_PATH"' \
             'export GI_TYPELIB_PATH="$APPDIR/lib/girepository-1.0:/usr/lib/girepository-1.0"' \
+            'export GHOSTTY_RESOURCES_DIR="$APPDIR/share/ghostty"' \
             '' \
             '# Auto-detect display backend (X11 or Wayland)' \
             '# UOS20 uses X11 by default, but Wayland is also supported' \
@@ -1274,6 +1277,7 @@ jobs:
             'export FONTCONFIG_FILE=fonts.conf' \
             'export LD_LIBRARY_PATH="$APPDIR/lib:$LD_LIBRARY_PATH"' \
             'export GI_TYPELIB_PATH="$APPDIR/lib/girepository-1.0:/usr/lib/girepository-1.0"' \
+            'export GHOSTTY_RESOURCES_DIR="$APPDIR/share/ghostty"' \
             '' \
             '# Auto-detect display backend' \
             'if [ -n "$WAYLAND_DISPLAY" ] && [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then' \
