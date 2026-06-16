@@ -1203,6 +1203,9 @@ jobs:
             '  </match>' \
             '</fontconfig>' > "$OUT/etc/fonts/fonts.conf"
 
+          # Create symlink for GTK4's EGL driver loading
+          # GTK4 tries to dlopen("libEGL_mesa.so.0") which is the Mesa EGL implementation
+          ln -sf libEGL.so.1.0.0 "$OUT/lib/libEGL_mesa.so.0"
           # Create AppRun wrapper that sets environment variables
           mv "$OUT/ghostty" "$OUT/ghostty.bin"
           printf '%s\n' '#!/bin/bash' \
