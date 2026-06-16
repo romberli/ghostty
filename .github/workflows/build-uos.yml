@@ -1203,9 +1203,15 @@ jobs:
             '  </match>' \
             '</fontconfig>' > "$OUT/etc/fonts/fonts.conf"
 
-          # Create symlink for GTK4's EGL driver loading
-          # GTK4 tries to dlopen("libEGL_mesa.so.0") which is the Mesa EGL implementation
-          ln -sf libEGL.so.1.0.0 "$OUT/lib/libEGL_mesa.so.0"
+          # Create Mesa vendor JSON for EGL driver loading
+          # GTK4 uses __EGL_VENDOR_LIBRARY_DIRS to find EGL drivers
+          mkdir -p "$OUT/share/glvnd/egl_vendor.d"
+          printf '%s\n' '{' \
+            '    "file_format_version": "1.0.0",' \
+            '    "ICD": {' \
+            '        "library_path": "libEGL.so.1"' \
+            '    }' \
+            '}' > "$OUT/share/glvnd/egl_vendor.d/50_mesa.json"
           # Create AppRun wrapper that sets environment variables
           mv "$OUT/ghostty" "$OUT/ghostty.bin"
           printf '%s\n' '#!/bin/bash' \
@@ -1287,6 +1293,7 @@ jobs:
             'export LIBGL_DRIVERS_PATH="$APPDIR/lib/dri"' \
             'export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe' \
             'export __LLVM_SYNC=1' \
+            'export __EGL_VENDOR_LIBRARY_DIRS="$APPDIR/share/glvnd/egl_vendor.d"' \
             '' \
             'exec "$APPDIR/ghostty.bin" "$@"' > "$OUT/ghostty"
           chmod +x "$OUT/ghostty"
