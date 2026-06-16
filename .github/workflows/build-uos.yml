@@ -1105,6 +1105,17 @@ jobs:
             esac
           }
 
+          # Skip bundling X11/xcb libs - let UOS20 use its own system versions
+          # Bundled Debian 10 libxcb causes threading crashes with UOS20's X server
+          is_system_x11_lib() {
+            case "$1" in
+              libX11.so*|libxcb*.so*|libXau.so*|libXdmcp.so*|\
+              libXext.so*|libXrender.so*|libXi.so*|libXfixes.so*|\
+              libXcursor.so*|libXinerama.so*|libXrandr.so*) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
           declare -A SEEN=()
           QUEUE=("$OUT/ghostty")
 
@@ -1122,6 +1133,9 @@ jobs:
               [ -z "$path" ] && continue
               [ "$path" = "not" ] && continue
               if is_glibc_lib "$name"; then
+                continue
+              fi
+              if is_system_x11_lib "$name"; then
                 continue
               fi
               if [ ! -f "$path" ]; then
@@ -1308,6 +1322,9 @@ jobs:
             'export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe' \
             'export __LLVM_SYNC=1' \
             'export __EGL_VENDOR_LIBRARY_DIRS="$APPDIR/share/glvnd/egl_vendor.d"' \
+            '' \
+            '# Fix X11 threading issues' \
+            'export LIBXCB_ALLOW_SLOPPY_LOCK=1' \
             '' \
             'exec "$APPDIR/ghostty.bin" "$@"' > "$OUT/ghostty"
           chmod +x "$OUT/ghostty"
