@@ -15,8 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# We need to be in interactive mode to proceed.
-if [[ "$-" != *i* ]]; then builtin return; fi
+# We need to be in interactive mode to proceed, unless we're injecting.
+if [[ -z "$GHOSTTY_BASH_INJECT" && "$-" != *i* ]]; then builtin return; fi
 
 # When automatic shell integration is active, we were started in POSIX
 # mode and need to manually recreate the bash startup sequence.
