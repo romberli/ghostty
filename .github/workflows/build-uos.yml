@@ -1044,7 +1044,9 @@ jobs:
             -Dgtk-wayland=true \
             -Dpie=true \
             --search-prefix "${PREFIX}"
+          ls -la zig-out/
           ls -la zig-out/bin/
+          ls -la zig-out/share/ 2>/dev/null || echo "No share directory"
 
       - name: Inspect main binary
         run: |
@@ -1294,8 +1296,7 @@ jobs:
             'export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe' \
             'export __LLVM_SYNC=1' \
             'export __EGL_VENDOR_LIBRARY_DIRS="$APPDIR/share/glvnd/egl_vendor.d"' \
-            '# Preload bundled Mesa to override system Mesa 18.3.6' \
-            'export LD_PRELOAD="$APPDIR/lib/libEGL.so.1:$APPDIR/lib/libGL.so.1:$LD_PRELOAD"' \
+            '' \
             'exec "$APPDIR/ghostty.bin" "$@"' > "$OUT/ghostty"
           chmod +x "$OUT/ghostty"
           
