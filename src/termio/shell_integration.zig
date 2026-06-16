@@ -314,7 +314,6 @@ fn setupBash(
     if (iter.next()) |exe| {
         try cmd.appendArg(exe);
     } else return null;
-    try cmd.appendArg("-i");
     try cmd.appendArg("--posix");
 
     // Stores the list of intercepted command line flags that will be passed
