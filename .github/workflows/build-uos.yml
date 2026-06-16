@@ -1036,7 +1036,7 @@ jobs:
           # Zig's @cImport uses Clang which needs explicit paths
           export CFLAGS="-I${PREFIX}/include -I/usr/include -I/usr/include/x86_64-linux-gnu"
           zig build \
-            -Doptimize=ReleaseSafe \
+            -Doptimize=ReleaseFast \
             -Dtarget="${ZIG_TARGET}" \
             -Dcpu=x86_64_v2 \
             -Dapp-runtime=gtk \
