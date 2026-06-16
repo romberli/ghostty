@@ -316,6 +316,7 @@ fn setupBash(
     if (iter.next()) |exe| {
         try cmd.appendArg(exe);
     } else return null;
+    try cmd.appendArg("-i");
     try cmd.appendArg("--posix");
 
     // Stores the list of intercepted command line flags that will be passed
@@ -375,9 +376,11 @@ fn setupBash(
         "{s}/shell-integration/bash/ghostty.bash",
         .{resource_dir},
     );
+    log.info("setupBash: checking script path: {s}", .{script_path});
     if (std.fs.openFileAbsolute(script_path, .{})) |file| {
         file.close();
         try env.put("ENV", script_path);
+        log.info("setupBash: ENV set to {s}", .{script_path});
     } else |err| {
         log.warn("unable to open {s}: {}", .{ script_path, err });
         env.remove("GHOSTTY_BASH_ENV");
