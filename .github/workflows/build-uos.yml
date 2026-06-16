@@ -950,10 +950,7 @@ jobs:
       - name: Build Mesa (llvmpipe software renderer for OpenGL 4.5)
         run: |
           set -eux
-          if [ -f "/opt/deps/lib/pkgconfig/dri.pc" ] || [ -f "/opt/deps/lib/dri/llvmpipe_dri.so" ]; then
-            echo "skip: Mesa llvmpipe already built"
-            exit 0
-          fi
+          # Always build Mesa - cache check was unreliable
           export LLVM_CONFIG=${LLVM_CONFIG:-/usr/bin/llvm-config-11}
           UA='Mozilla/5.0 (X11; Linux x86_64)'
           download() {
@@ -1134,23 +1131,32 @@ jobs:
           done
 
           # Explicitly bundle Mesa DRI drivers (dlopen'd, not caught by ldd)
+          # Mesa with -Dgallium-drivers=swrast produces swrast_dri.so
           echo "--- bundling Mesa DRI drivers ---"
           mkdir -p "$OUT/lib/dri"
-          if [ -f "${PREFIX}/lib/dri/llvmpipe_dri.so" ]; then
-            cp -L "${PREFIX}/lib/dri/llvmpipe_dri.so" "$OUT/lib/dri/"
-            chmod u+w "$OUT/lib/dri/llvmpipe_dri.so"
-            echo "Bundled llvmpipe_dri.so"
+          # Copy ALL .so files from dri directory (swrast_dri.so, etc.)
+          if [ -d "${PREFIX}/lib/dri" ]; then
+            for dri in "${PREFIX}/lib/dri/"*.so; do
+              [ -f "$dri" ] || continue
+              base=$(basename "$dri")
+              cp -L "$dri" "$OUT/lib/dri/$base"
+              chmod u+w "$OUT/lib/dri/$base"
+              echo "Bundled DRI: $base"
+            done
           fi
-          # Also bundle libLLVM if present (Mesa depends on it)
-          for lib in "${PREFIX}/lib/libLLVM"*.so*; do
-            [ -f "$lib" ] || continue
-            base=$(basename "$lib")
-            if [ -z "${SEEN[$base]:-}" ]; then
-              cp -L "$lib" "$OUT/lib/$base"
-              chmod u+w "$OUT/lib/$base"
-              SEEN[$base]=1
-              echo "Bundled $base"
-            fi
+          # Also bundle libLLVM - search both PREFIX and system paths
+          echo "--- searching for libLLVM ---"
+          for search_dir in "${PREFIX}/lib" "/usr/lib/x86_64-linux-gnu" "/usr/lib"; do
+            for lib in "$search_dir"/libLLVM*.so*; do
+              [ -f "$lib" ] || continue
+              base=$(basename "$lib")
+              if [ -z "${SEEN[$base]:-}" ]; then
+                cp -L "$lib" "$OUT/lib/$base"
+                chmod u+w "$OUT/lib/$base"
+                SEEN[$base]=1
+                echo "Bundled $base from $search_dir"
+              fi
+            done
           done
 
           echo "--- bundled libs ---"
