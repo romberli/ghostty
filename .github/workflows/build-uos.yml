@@ -1089,6 +1089,7 @@ jobs:
           mkdir -p "$OUT/lib"
           cp zig-out/bin/ghostty "$OUT/ghostty"
           # Copy Ghostty resources (shell integration, terminfo, themes, etc.)
+          mkdir -p "$OUT/share"
           cp -r zig-out/share/ghostty "$OUT/share/ghostty"
 
           is_glibc_lib() {
