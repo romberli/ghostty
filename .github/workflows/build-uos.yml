@@ -1094,7 +1094,7 @@ jobs:
           # Verify resources were copied
           echo "=== Verifying share/ghostty contents ==="
           ls -la "$OUT/share/ghostty/"
-          find "$OUT/share/ghostty" -type f | head -20
+          find "$OUT/share/ghostty" -type f | wc -l
 
           is_glibc_lib() {
             case "$1" in
