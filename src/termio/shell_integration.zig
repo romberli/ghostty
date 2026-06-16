@@ -78,8 +78,6 @@ pub fn setup(
         },
     } orelse return null;
 
-    log.info("setup: shell={s} command={s}", .{ @tagName(shell), new_command.shell });
-
     return .{
         .shell = shell,
         .command = new_command,
@@ -406,9 +404,7 @@ fn setupBash(
     }
 
     // Return a copy of our modified command line to use as the shell command.
-    const shell_cmd = try alloc.dupeZ(u8, try cmd.toOwnedSlice());
-    log.info("setupBash: final command = {s}", .{shell_cmd});
-    return .{ .shell = shell_cmd };
+    return .{ .shell = try alloc.dupeZ(u8, try cmd.toOwnedSlice()) };
 }
 
 test "bash" {

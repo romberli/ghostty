@@ -15,8 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Debug: log shell state before interactive check
-builtin echo "ghostty.bash: \$-=$- GHOSTTY_BASH_INJECT=${GHOSTTY_BASH_INJECT:-unset}" >&2
 # We need to be in interactive mode to proceed.
 if [[ "$-" != *i* ]]; then builtin return; fi
 
