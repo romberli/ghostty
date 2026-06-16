@@ -1284,12 +1284,8 @@ jobs:
             'export GI_TYPELIB_PATH="$APPDIR/lib/girepository-1.0:/usr/lib/girepository-1.0"' \
             'export GHOSTTY_RESOURCES_DIR="$APPDIR/share/ghostty"' \
             '' \
-            '# Create default config to disable shell integration (not working on UOS20)' \
-            'mkdir -p "$APPDIR/config"' \
-            'if [ ! -f "$APPDIR/config/config" ]; then' \
-            '  echo "shell-integration=none" > "$APPDIR/config/config"' \
-            'fi' \
-            'export XDG_CONFIG_HOME="$APPDIR"' \
+            '# Disable shell integration (not working on UOS20)' \
+            'export GHOSTTY_SHELL_INTEGRATION=none' \
             '' \
             '# Auto-detect display backend' \
             'if [ -n "$WAYLAND_DISPLAY" ] && [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then' \
