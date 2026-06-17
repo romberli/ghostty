@@ -1081,6 +1081,27 @@ jobs:
           fi
           echo "OK: GLIBC_${MAX_USED} <= GLIBC_${MAX_GLIBC}"
 
+      - name: Build XInitThreads preload library
+        run: |
+          set -eux
+          # Create a small C library that calls XInitThreads() on load
+          # This is needed because GTK4 X11 backend requires XInitThreads()
+          # to be called before any X11 operations, but Ghostty doesn't call it.
+          cat > /tmp/xinitthreads.c <<'EOF'
+          #include <X11/Xlib.h>
+
+          __attribute__((constructor))
+          void init_xthreads(void) {
+              XInitThreads();
+          }
+          EOF
+
+          # Compile as shared library
+          gcc -shared -fPIC -o libxinitthreads.so /tmp/xinitthreads.c -lX11
+
+          # Verify it was built
+          ls -lh libxinitthreads.so
+          file libxinitthreads.so
       - name: Bundle dynamic libraries (recursive)
         shell: bash
         run: |
@@ -1088,6 +1109,8 @@ jobs:
           OUT=dist/ghostty-uos-amd64
           mkdir -p "$OUT/lib"
           cp zig-out/bin/ghostty "$OUT/ghostty"
+          # Copy XInitThreads preload library
+          cp libxinitthreads.so "$OUT/lib/"
           # Copy Ghostty resources (shell integration, terminfo, themes, etc.)
           mkdir -p "$OUT/share"
           cp -r zig-out/share/ghostty "$OUT/share/ghostty"
@@ -1280,6 +1303,9 @@ jobs:
             'export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe' \
             'export __LLVM_SYNC=1' \
             '' \
+            '# Preload XInitThreads library to fix GTK4 X11 threading' \
+            'export LD_PRELOAD="$APPDIR/lib/libxinitthreads.so:$LD_PRELOAD"' \
+            '' \
             'exec "$APPDIR/ghostty.bin" "$@"' > "$OUT/AppRun"
           chmod +x "$OUT/AppRun"
           
@@ -1325,6 +1351,10 @@ jobs:
             '' \
             '# Fix X11 threading issues' \
             'export LIBXCB_ALLOW_SLOPPY_LOCK=1' \
+            '' \
+            '# Preload XInitThreads library to fix GTK4 X11 threading' \
+            '# GTK4 X11 backend requires XInitThreads() to be called before any X11 operations' \
+            'export LD_PRELOAD="$APPDIR/lib/libxinitthreads.so:$LD_PRELOAD"' \
             '' \
             '# Force login shell to prevent immediate exit' \
             '# Ghostty runs: /bin/sh -c <command>' \
