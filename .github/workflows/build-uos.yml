@@ -1326,15 +1326,18 @@ jobs:
             '# Fix X11 threading issues' \
             'export LIBXCB_ALLOW_SLOPPY_LOCK=1' \
             '' \
-            '# Ensure user shell is detected correctly (Ghostty falls back to /bin/sh if SHELL is unset)' \
-            'if [ -z "$SHELL" ]; then' \
+            '# Force login shell to prevent immediate exit' \
+            '# Ghostty runs: /bin/sh -c <command>' \
+            '# We need <command> to be a login shell that loads profiles' \
+            'USER_SHELL="${SHELL:-}"' \
+            'if [ -z "$USER_SHELL" ]; then' \
             '  USER_SHELL=$(getent passwd "$USER" 2>/dev/null | cut -d: -f7)' \
-            '  if [ -n "$USER_SHELL" ]; then' \
-            '    export SHELL="$USER_SHELL"' \
-            '  fi' \
+            'fi' \
+            'if [ -z "$USER_SHELL" ] || [ ! -x "$USER_SHELL" ]; then' \
+            '  USER_SHELL=/bin/bash' \
             'fi' \
             '' \
-            'exec "$APPDIR/ghostty.bin" "$@"' > "$OUT/ghostty"
+            'exec "$APPDIR/ghostty.bin" --command="$USER_SHELL -l" "$@"' > "$OUT/ghostty"
           chmod +x "$OUT/ghostty"
           
           # Create desktop file for easy launching
