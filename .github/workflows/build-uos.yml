@@ -1301,28 +1301,18 @@ jobs:
             '# Disable shell integration (not working on UOS20)' \
             'export GHOSTTY_SHELL_INTEGRATION=none' \
             '' \
-            '# Force Wayland backend to avoid XCB threading issues' \
-            '# GTK4 X11 backend requires XInitThreads() which cannot be called from wrapper' \
-            'export GDK_BACKEND=wayland' \
-            '' \
-            '# Auto-detect Wayland display' \
-            'if [ -z "$WAYLAND_DISPLAY" ]; then' \
-            '  if [ -S "$XDG_RUNTIME_DIR/wayland-0" ]; then' \
-            '    export WAYLAND_DISPLAY=wayland-0' \
-            '  elif [ -S "/run/user/$(id -u)/wayland-0" ]; then' \
-            '    export WAYLAND_DISPLAY=wayland-0' \
-            '    export XDG_RUNTIME_DIR="/run/user/$(id -u)"' \
-            '  fi' \
-            'fi' \
-            '' \
-            '# Fallback to X11 via XWayland if Wayland is not available' \
-            'if [ -z "$WAYLAND_DISPLAY" ] || [ ! -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then' \
-            '  echo "Warning: Wayland not detected, trying X11 (may crash due to XCB threading issues)"' \
+            '# Auto-detect display backend' \
+            'if [ -n "$WAYLAND_DISPLAY" ] && [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then' \
+            '  export GDK_BACKEND=wayland' \
+            'elif [ -n "$DISPLAY" ]; then' \
             '  export GDK_BACKEND=x11' \
-            '  if [ -z "$DISPLAY" ]; then' \
-            '    if [ -e /tmp/.X11-unix/X0 ]; then' \
-            '      export DISPLAY=:0' \
-            '    fi' \
+            'else' \
+            '  if [ -S "$XDG_RUNTIME_DIR/wayland-0" ]; then' \
+            '    export GDK_BACKEND=wayland' \
+            '    export WAYLAND_DISPLAY=wayland-0' \
+            '  elif [ -e /tmp/.X11-unix/X0 ]; then' \
+            '    export GDK_BACKEND=x11' \
+            '    export DISPLAY=:0' \
             '  fi' \
             'fi' \
             '' \
