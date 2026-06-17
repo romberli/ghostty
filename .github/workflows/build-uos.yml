@@ -1326,6 +1326,14 @@ jobs:
             '# Fix X11 threading issues' \
             'export LIBXCB_ALLOW_SLOPPY_LOCK=1' \
             '' \
+            '# Ensure user shell is detected correctly (Ghostty falls back to /bin/sh if SHELL is unset)' \
+            'if [ -z "$SHELL" ]; then' \
+            '  USER_SHELL=$(getent passwd "$USER" 2>/dev/null | cut -d: -f7)' \
+            '  if [ -n "$USER_SHELL" ]; then' \
+            '    export SHELL="$USER_SHELL"' \
+            '  fi' \
+            'fi' \
+            '' \
             'exec "$APPDIR/ghostty.bin" "$@"' > "$OUT/ghostty"
           chmod +x "$OUT/ghostty"
           
