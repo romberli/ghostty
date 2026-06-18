@@ -1084,52 +1084,48 @@ jobs:
       - name: Build XInitThreads preload library
         run: |
           set -eux
-          # Create a small C library that calls XInitThreads() on load
-          # This is needed because GTK4 X11 backend requires XInitThreads()
-          # to be called before any X11 operations, but Ghostty doesn't call it.
-          #
-          # We use dlopen to dynamically load libX11.so, ensuring we use the
-          # same library instance that Ghostty is using (from the bundled lib/).
+          # Create a library that hooks XOpenDisplay to call XInitThreads first
+          # This ensures XInitThreads is called before any X11 operations,
+          # which is required by GTK4's X11 backend for multi-threaded use.
           cat > /tmp/xinitthreads.c <<'EOF'
+          #define _GNU_SOURCE
           #include <dlfcn.h>
+          #include <X11/Xlib.h>
           #include <stdio.h>
-          #include <stdlib.h>
+          #include <pthread.h>
 
-          __attribute__((constructor))
-          void init_xthreads(void) {
-              // Try to load libX11.so.6 (the versioned name)
-              void *lib = dlopen("libX11.so.6", RTLD_LAZY | RTLD_NOLOAD);
-              if (!lib) {
-                  // If that fails, try without NOLOAD to load it
-                  lib = dlopen("libX11.so.6", RTLD_LAZY);
-              }
-              if (!lib) {
-                  fprintf(stderr, "libxinitthreads: failed to load libX11.so.6: %s\n", dlerror());
-                  return;
-              }
+          static pthread_once_t xinit_once = PTHREAD_ONCE_INIT;
+          static int xinit_done = 0;
 
-              // Get the XInitThreads function
-              typedef int (*XInitThreadsFunc)(void);
-              XInitThreadsFunc init_threads = (XInitThreadsFunc)dlsym(lib, "XInitThreads");
-              if (!init_threads) {
-                  fprintf(stderr, "libxinitthreads: failed to find XInitThreads: %s\n", dlerror());
-                  return;
+          static void call_xinit_threads(void) {
+              if (!xinit_done) {
+                  XInitThreads();
+                  xinit_done = 1;
               }
+          }
 
-              // Call XInitThreads
-              int result = init_threads();
-              if (result == 0) {
-                  fprintf(stderr, "libxinitthreads: XInitThreads() failed\n");
+          // Hook XOpenDisplay to ensure XInitThreads is called first
+          Display *XOpenDisplay(const char *display_name) {
+              pthread_once(&xinit_once, call_xinit_threads);
+              
+              // Get the real XOpenDisplay
+              typedef Display *(*XOpenDisplayFunc)(const char *);
+              static XOpenDisplayFunc real_XOpenDisplay = NULL;
+              if (!real_XOpenDisplay) {
+                  real_XOpenDisplay = (XOpenDisplayFunc)dlsym(RTLD_NEXT, "XOpenDisplay");
               }
+              
+              return real_XOpenDisplay(display_name);
           }
           EOF
 
-          # Compile as shared library - use -ldl for dlopen/dlsym
-          gcc -shared -fPIC -o libxinitthreads.so /tmp/xinitthreads.c -ldl
+          # Compile as shared library
+          gcc -shared -fPIC -o libxinitthreads.so /tmp/xinitthreads.c -ldl -lX11 -lpthread
 
           # Verify it was built
           ls -lh libxinitthreads.so
           file libxinitthreads.so
+
 
       - name: Bundle dynamic libraries (recursive)
         shell: bash
