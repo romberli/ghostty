@@ -1325,7 +1325,6 @@ jobs:
             'export GIO_MODULE_DIR="$APPDIR/lib/gio/modules"' \
             'export GSETTINGS_SCHEMA_DIR="$APPDIR/share/glib-2.0/schemas"' \
             'export XDG_DATA_DIRS="$APPDIR/share:/usr/local/share:/usr/share"' \
-
             '' \
             '# Auto-detect display backend (X11 or Wayland)' \
             '# UOS20 uses X11 by default, but Wayland is also supported' \
@@ -1384,7 +1383,6 @@ jobs:
             'export GIO_MODULE_DIR="$APPDIR/lib/gio/modules"' \
             'export GSETTINGS_SCHEMA_DIR="$APPDIR/share/glib-2.0/schemas"' \
             'export XDG_DATA_DIRS="$APPDIR/share:/usr/local/share:/usr/share"' \
-
             '' \
             '# Disable shell integration (not working on UOS20)' \
             'export GHOSTTY_SHELL_INTEGRATION=none' \
