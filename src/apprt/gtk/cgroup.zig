@@ -24,15 +24,23 @@ fn querySystemdVersion(dbus: *gio.DBusConnection) ?u32 {
     const reply_type = glib.VariantType.new("(v)");
     defer glib.free(reply_type);
 
+    // Build parameters: (interface_name, property_name)
+    const params_type = glib.VariantType.new("(ss)");
+    defer glib.free(params_type);
+
+    var params_builder: glib.VariantBuilder = undefined;
+    params_builder.init(params_type);
+    params_builder.add("s", "org.freedesktop.systemd1.Manager");
+    params_builder.add("s", "Version");
+    const params = params_builder.end();
+    defer params.unref();
+
     const reply = dbus.callSync(
         "org.freedesktop.systemd1",
         "/org/freedesktop/systemd1",
         "org.freedesktop.DBus.Properties",
         "Get",
-        glib.Variant.new("(ss)", .{
-            glib.Variant.newString("org.freedesktop.systemd1.Manager"),
-            glib.Variant.newString("Version"),
-        }),
+        params,
         reply_type,
         .{},
         -1,
@@ -42,16 +50,18 @@ fn querySystemdVersion(dbus: *gio.DBusConnection) ?u32 {
     defer reply.unref();
 
     // Reply is (v) where v is a variant containing a string
-    var iter: glib.VariantIter = undefined;
-    reply.iter_init(&iter);
-    const variant = iter.nextValue() orelse return null;
-    defer variant.unref();
+    // Use .get with format string to extract the inner variant
+    var inner_variant: ?*glib.Variant = null;
+    reply.get("(v)", &inner_variant);
+    const inner = inner_variant orelse return null;
+    defer inner.unref();
 
     // Extract the string from the variant
-    const str = variant.getString() orelse return null;
+    const str = inner.getString() orelse return null;
     // Parse version number (e.g., "241" from "241")
     return std.fmt.parseInt(u32, str, 10) catch null;
 }
+
 
 pub fn fmtScope(buf: []u8, pid: u32) [:0]const u8 {
     const fmt = "app-ghostty-surface-transient-{}.scope";
