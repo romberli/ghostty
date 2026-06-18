@@ -1087,21 +1087,50 @@ jobs:
           # Create a small C library that calls XInitThreads() on load
           # This is needed because GTK4 X11 backend requires XInitThreads()
           # to be called before any X11 operations, but Ghostty doesn't call it.
+          #
+          # We use dlopen to dynamically load libX11.so, ensuring we use the
+          # same library instance that Ghostty is using (from the bundled lib/).
           cat > /tmp/xinitthreads.c <<'EOF'
-          #include <X11/Xlib.h>
+          #include <dlfcn.h>
+          #include <stdio.h>
+          #include <stdlib.h>
 
           __attribute__((constructor))
           void init_xthreads(void) {
-              XInitThreads();
+              // Try to load libX11.so.6 (the versioned name)
+              void *lib = dlopen("libX11.so.6", RTLD_LAZY | RTLD_NOLOAD);
+              if (!lib) {
+                  // If that fails, try without NOLOAD to load it
+                  lib = dlopen("libX11.so.6", RTLD_LAZY);
+              }
+              if (!lib) {
+                  fprintf(stderr, "libxinitthreads: failed to load libX11.so.6: %s\n", dlerror());
+                  return;
+              }
+
+              // Get the XInitThreads function
+              typedef int (*XInitThreadsFunc)(void);
+              XInitThreadsFunc init_threads = (XInitThreadsFunc)dlsym(lib, "XInitThreads");
+              if (!init_threads) {
+                  fprintf(stderr, "libxinitthreads: failed to find XInitThreads: %s\n", dlerror());
+                  return;
+              }
+
+              // Call XInitThreads
+              int result = init_threads();
+              if (result == 0) {
+                  fprintf(stderr, "libxinitthreads: XInitThreads() failed\n");
+              }
           }
           EOF
 
-          # Compile as shared library
-          gcc -shared -fPIC -o libxinitthreads.so /tmp/xinitthreads.c -lX11
+          # Compile as shared library - use -ldl for dlopen/dlsym
+          gcc -shared -fPIC -o libxinitthreads.so /tmp/xinitthreads.c -ldl
 
           # Verify it was built
           ls -lh libxinitthreads.so
           file libxinitthreads.so
+
       - name: Bundle dynamic libraries (recursive)
         shell: bash
         run: |
@@ -1384,8 +1413,7 @@ jobs:
             'export GSETTINGS_SCHEMA_DIR="$APPDIR/share/glib-2.0/schemas"' \
             'export XDG_DATA_DIRS="$APPDIR/share:/usr/local/share:/usr/share"' \
             '' \
-            '# Disable shell integration (not working on UOS20)' \
-            'export GHOSTTY_SHELL_INTEGRATION=none' \
+            '# Auto-detect display backend' \
             '' \
             '# Auto-detect display backend' \
             'if [ -n "$WAYLAND_DISPLAY" ] && [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then' \
