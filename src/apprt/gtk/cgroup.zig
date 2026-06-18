@@ -16,6 +16,43 @@ pub const Options = struct {
     tasks_max: ?u64 = null,
 };
 
+/// Query systemd version via D-Bus. Returns null if query fails.
+fn querySystemdVersion(dbus: *gio.DBusConnection) ?u32 {
+    var err: ?*glib.Error = null;
+    defer if (err) |e| e.free();
+
+    const reply_type = glib.VariantType.new("(v)");
+    defer glib.free(reply_type);
+
+    const reply = dbus.callSync(
+        "org.freedesktop.systemd1",
+        "/org/freedesktop/systemd1",
+        "org.freedesktop.DBus.Properties",
+        "Get",
+        glib.Variant.new("(ss)", .{
+            glib.Variant.newString("org.freedesktop.systemd1.Manager"),
+            glib.Variant.newString("Version"),
+        }),
+        reply_type,
+        .{},
+        -1,
+        null,
+        &err,
+    ) orelse return null;
+    defer reply.unref();
+
+    // Reply is (v) where v is a variant containing a string
+    var iter: glib.VariantIter = undefined;
+    reply.iter_init(&iter);
+    const variant = iter.nextValue() orelse return null;
+    defer variant.unref();
+
+    // Extract the string from the variant
+    const str = variant.getString() orelse return null;
+    // Parse version number (e.g., "241" from "241")
+    return std.fmt.parseInt(u32, str, 10) catch null;
+}
+
 pub fn fmtScope(buf: []u8, pid: u32) [:0]const u8 {
     const fmt = "app-ghostty-surface-transient-{}.scope";
 
@@ -34,6 +71,10 @@ pub fn createScope(
     // The unit name needs to be unique. We use the PID for this.
     var name_buf: [256]u8 = undefined;
     const name = fmtScope(&name_buf, pid);
+
+    // Query systemd version to determine which properties are supported
+    // ManagedOOMMemoryPressure requires systemd 250+
+    const systemd_version = querySystemdVersion(dbus);
 
     const builder_type = glib.VariantType.new("(ssa(sv)a(sa(sv)))");
     defer glib.free(builder_type);
@@ -62,7 +103,12 @@ pub fn createScope(
         }
 
         // https://www.freedesktop.org/software/systemd/man/latest/systemd-oomd.service.html
-        builder.add("(sv)", "ManagedOOMMemoryPressure", glib.Variant.newString("kill"));
+        // ManagedOOMMemoryPressure requires systemd 250+
+        if (systemd_version) |v| {
+            if (v >= 250) {
+                builder.add("(sv)", "ManagedOOMMemoryPressure", glib.Variant.newString("kill"));
+            }
+        }
 
         // PID to move into the unit
         const pids_value_type = glib.VariantType.new("u");

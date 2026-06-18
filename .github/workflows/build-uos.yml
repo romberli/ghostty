@@ -1258,6 +1258,52 @@ jobs:
             '        "library_path": "libEGL.so.1"' \
             '    }' \
             '}' > "$OUT/share/glvnd/egl_vendor.d/50_mesa.json"
+
+          # Bundle GTK runtime resources required for proper initialization
+          # These are needed on target systems that may not have GTK4 installed
+          echo "Bundling GTK runtime resources..."
+          
+          # Bundle GdkPixbuf loaders (required for image loading)
+          mkdir -p "$OUT/lib/gdk-pixbuf-2.0"
+          cp -r /opt/deps/lib/gdk-pixbuf-2.0/* "$OUT/lib/gdk-pixbuf-2.0/" 2>/dev/null || \
+          cp -r /usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/* "$OUT/lib/gdk-pixbuf-2.0/" 2>/dev/null || true
+          
+          # Bundle GIO modules (required for some GTK functionality)
+          mkdir -p "$OUT/lib/gio"
+          cp -r /opt/deps/lib/gio/* "$OUT/lib/gio/" 2>/dev/null || \
+          cp -r /usr/lib/x86_64-linux-gnu/gio/* "$OUT/lib/gio/" 2>/dev/null || true
+          
+          # Bundle GObject introspection typelibs (required for libadwaita)
+          mkdir -p "$OUT/lib/girepository-1.0"
+          cp -r /opt/deps/lib/girepository-1.0/* "$OUT/lib/girepository-1.0/" 2>/dev/null || \
+          cp -r /usr/lib/x86_64-linux-gnu/girepository-1.0/* "$OUT/lib/girepository-1.0/" 2>/dev/null || true
+          
+          # Bundle GSettings schemas (required for GTK/libadwaita configuration)
+          mkdir -p "$OUT/share/glib-2.0/schemas"
+          cp -r /opt/deps/share/glib-2.0/schemas/* "$OUT/share/glib-2.0/schemas/" 2>/dev/null || \
+          cp -r /usr/share/glib-2.0/schemas/* "$OUT/share/glib-2.0/schemas/" 2>/dev/null || true
+          
+          # Bundle GTK themes and icons
+          mkdir -p "$OUT/share/gtk-4.0"
+          cp -r /opt/deps/share/gtk-4.0/* "$OUT/share/gtk-4.0/" 2>/dev/null || true
+          
+          # Compile GSettings schemas
+          if [ -f /opt/deps/bin/glib-compile-schemas ]; then
+            /opt/deps/bin/glib-compile-schemas "$OUT/share/glib-2.0/schemas/" 2>/dev/null || true
+          elif [ -f /usr/bin/glib-compile-schemas ]; then
+            /usr/bin/glib-compile-schemas "$OUT/share/glib-2.0/schemas/" 2>/dev/null || true
+          fi
+          
+          # Update GdkPixbuf loader cache to point to bundled location
+          # Use single quotes to preserve literal $APPDIR for runtime expansion
+          if [ -f "$OUT/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" ]; then
+            sed -i 's|/opt/deps/lib|$APPDIR/lib|g' "$OUT/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" 2>/dev/null || \
+            sed -i 's|/usr/lib/x86_64-linux-gnu|$APPDIR/lib|g' "$OUT/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" 2>/dev/null || true
+          fi
+
+          
+          echo "GTK runtime resources bundled successfully"
+
           # Create AppRun wrapper that sets environment variables
           mv "$OUT/ghostty" "$OUT/ghostty.bin"
           printf '%s\n' '#!/bin/bash' \
@@ -1272,6 +1318,14 @@ jobs:
             'export LD_LIBRARY_PATH="$APPDIR/lib:$LD_LIBRARY_PATH"' \
             'export GI_TYPELIB_PATH="$APPDIR/lib/girepository-1.0:/usr/lib/girepository-1.0"' \
             'export GHOSTTY_RESOURCES_DIR="$APPDIR/share/ghostty"' \
+            '' \
+            '# GTK runtime resource paths (required for proper GTK initialization)' \
+            'export GDK_PIXBUF_MODULE_FILE="$APPDIR/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"' \
+            'export GDK_PIXBUF_MODULEDIR="$APPDIR/lib/gdk-pixbuf-2.0/2.10.0/loaders"' \
+            'export GIO_MODULE_DIR="$APPDIR/lib/gio/modules"' \
+            'export GSETTINGS_SCHEMA_DIR="$APPDIR/share/glib-2.0/schemas"' \
+            'export XDG_DATA_DIRS="$APPDIR/share:/usr/local/share:/usr/share"' \
+
             '' \
             '# Auto-detect display backend (X11 or Wayland)' \
             '# UOS20 uses X11 by default, but Wayland is also supported' \
@@ -1323,6 +1377,14 @@ jobs:
             'export LD_LIBRARY_PATH="$APPDIR/lib:$LD_LIBRARY_PATH"' \
             'export GI_TYPELIB_PATH="$APPDIR/lib/girepository-1.0:/usr/lib/girepository-1.0"' \
             'export GHOSTTY_RESOURCES_DIR="$APPDIR/share/ghostty"' \
+            '' \
+            '# GTK runtime resource paths (required for proper GTK initialization)' \
+            'export GDK_PIXBUF_MODULE_FILE="$APPDIR/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"' \
+            'export GDK_PIXBUF_MODULEDIR="$APPDIR/lib/gdk-pixbuf-2.0/2.10.0/loaders"' \
+            'export GIO_MODULE_DIR="$APPDIR/lib/gio/modules"' \
+            'export GSETTINGS_SCHEMA_DIR="$APPDIR/share/glib-2.0/schemas"' \
+            'export XDG_DATA_DIRS="$APPDIR/share:/usr/local/share:/usr/share"' \
+
             '' \
             '# Disable shell integration (not working on UOS20)' \
             'export GHOSTTY_SHELL_INTEGRATION=none' \
