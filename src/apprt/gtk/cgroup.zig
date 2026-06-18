@@ -49,17 +49,19 @@ fn querySystemdVersion(dbus: *gio.DBusConnection) ?u32 {
     ) orelse return null;
     defer reply.unref();
 
-    // Reply is (v) where v is a variant containing a string
+    // Reply is a variant containing a string
     // Use .get with format string to extract the inner variant
     var inner_variant: ?*glib.Variant = null;
-    reply.get("(v)", &inner_variant);
+    reply.get("v", &inner_variant);
     const inner = inner_variant orelse return null;
     defer inner.unref();
 
     // Extract the string from the variant
-    const str = inner.getString() orelse return null;
+    var len: usize = undefined;
+    const str = inner.getString(&len);
+    if (len == 0) return null;
     // Parse version number (e.g., "241" from "241")
-    return std.fmt.parseInt(u32, str, 10) catch null;
+    return std.fmt.parseInt(u32, str[0..len], 10) catch null;
 }
 
 
